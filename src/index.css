@@ -1,0 +1,571 @@
+/* ==========================================================================
+   CENTRALIZED DESIGN SYSTEM & LIQUID VIOLET GLASS MATERIAL SYSTEM
+   Base Palette:
+   - Primary Accent: #6D5BA6
+   - Secondary Accent: #4A416B
+   - Soft Highlight: #8B7BB8
+   ========================================================================== */
+
+:root {
+  /* Typography - Nunito Sans (Smooth Rounded Humanist Sans) & IBM Plex Mono (Technical System Mono) */
+  --font-sans: 'Nunito Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
+
+  /* Transitions */
+  --transition-fast: 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 18px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+}
+
+/* ==========================================================================
+   DARK WORKSPACE THEME (Default)
+   ========================================================================== */
+[data-theme="night"],
+:root {
+  --bg-primary: #080B16;
+  --bg-secondary: #0D1120;
+  --bg-radial: radial-gradient(circle at 50% 0%, #151326 0%, #080B16 70%);
+
+  --text-primary: #F4F2F8;
+  --text-secondary: #9A9AAF;
+  --text-muted: #6F7185;
+
+  /* Muted Violet Accents */
+  --accent-primary: #6D5BA6;
+  --accent-secondary: #4A416B;
+  --accent-soft: #8B7BB8;
+  --accent-highlight: #8B7BB8;
+  --accent-glow: rgba(109, 91, 166, 0.25);
+
+  /* 3-TIER LIQUID GLASS MATERIAL SYSTEM (Dark) */
+  /* Level 1: Transparent Glass (Navbar, Main Containers) */
+  --glass-level-1-bg: rgba(255, 255, 255, 0.035);
+  --glass-level-1-border: rgba(255, 255, 255, 0.08);
+  --glass-level-1-shadow: 0 18px 45px -10px rgba(0, 0, 0, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+
+  /* Level 2: Violet-Tinted Glass (Inspection Panels, Architecture Detail, Info Blocks) */
+  --glass-level-2-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(109, 91, 166, 0.08) 100%);
+  --glass-level-2-border: rgba(109, 91, 166, 0.22);
+  --glass-level-2-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+
+  /* Level 3: Active Glass (Selected Nodes, Active Cards, Key Highlights) */
+  --glass-level-3-bg: rgba(109, 91, 166, 0.16);
+  --glass-level-3-border: rgba(139, 123, 184, 0.42);
+  --glass-level-3-shadow: 0 20px 50px -10px rgba(109, 91, 166, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.18);
+
+  /* Global glass aliases for compatibility */
+  --glass-bg: var(--glass-level-1-bg);
+  --glass-bg-hover: rgba(255, 255, 255, 0.065);
+  --glass-bg-active: var(--glass-level-3-bg);
+  
+  --glass-border: var(--glass-level-1-border);
+  --glass-border-hover: rgba(139, 123, 184, 0.32);
+  --glass-border-active: var(--glass-level-3-border);
+
+  --glass-blur: 20px;
+  --glass-saturate: 160%;
+  --glass-shadow: var(--glass-level-1-shadow);
+  --glass-shadow-hover: 0 24px 55px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(139, 123, 184, 0.2);
+
+  --glass-specular: linear-gradient(135deg, rgba(255, 255, 255, 0.10) 0%, rgba(255, 255, 255, 0) 55%);
+  --mouse-glow: rgba(109, 91, 166, 0.07);
+
+  /* Code / Console */
+  --code-bg: rgba(13, 17, 32, 0.94);
+  --code-border: rgba(109, 91, 166, 0.35);
+
+  --accent-cyan: var(--accent-primary);
+  --accent-cyan-glow: var(--accent-glow);
+  --accent-purple: var(--accent-soft);
+  --accent-purple-glow: rgba(139, 123, 184, 0.2);
+  --accent-blue: var(--accent-secondary);
+}
+
+/* ==========================================================================
+   LIGHT WORKSPACE THEME (Day) - REFINED LAVENDER/VIOLET GLASS
+   ========================================================================== */
+[data-theme="day"] {
+  --bg-primary: #F3F2F7;
+  --bg-secondary: #E9E7F0;
+  --bg-radial: radial-gradient(circle at 50% 0%, #ECE8F6 0%, #F3F2F7 70%);
+
+  --text-primary: #17151F;
+  --text-secondary: #5F5A6D;
+  --text-muted: #858091;
+
+  --accent-primary: #6D5BA6;
+  --accent-secondary: #4A416B;
+  --accent-soft: #8B7BB8;
+  --accent-highlight: #6D5BA6;
+  --accent-glow: rgba(109, 91, 166, 0.16);
+
+  /* 3-TIER LIQUID VIOLET GLASS MATERIAL SYSTEM (Light) */
+  /* Level 1: Transparent Glass */
+  --glass-level-1-bg: rgba(255, 255, 255, 0.55);
+  --glass-level-1-border: rgba(109, 91, 166, 0.12);
+  --glass-level-1-shadow: 0 14px 36px -8px rgba(45, 36, 70, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.85);
+
+  /* Level 2: Soft Violet-Tinted Glass */
+  --glass-level-2-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.72) 0%, rgba(238, 234, 248, 0.65) 100%);
+  --glass-level-2-border: rgba(109, 91, 166, 0.18);
+  --glass-level-2-shadow: 0 16px 40px -10px rgba(45, 36, 70, 0.09), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+
+  /* Level 3: Active Violet Glass */
+  --glass-level-3-bg: linear-gradient(135deg, rgba(235, 230, 248, 0.85) 0%, rgba(225, 218, 245, 0.8) 100%);
+  --glass-level-3-border: rgba(109, 91, 166, 0.32);
+  --glass-level-3-shadow: 0 18px 45px -10px rgba(109, 91, 166, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.95);
+
+  /* Global glass aliases (Light) */
+  --glass-bg: var(--glass-level-1-bg);
+  --glass-bg-hover: rgba(255, 255, 255, 0.82);
+  --glass-bg-active: var(--glass-level-3-bg);
+
+  --glass-border: var(--glass-level-1-border);
+  --glass-border-hover: rgba(109, 91, 166, 0.26);
+  --glass-border-active: var(--glass-level-3-border);
+
+  --glass-blur: 20px;
+  --glass-saturate: 150%;
+  --glass-shadow: var(--glass-level-1-shadow);
+  --glass-shadow-hover: 0 18px 42px -10px rgba(45, 36, 70, 0.12), inset 0 1px 1px rgba(109, 91, 166, 0.18);
+
+  --glass-specular: linear-gradient(135deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 60%);
+  --mouse-glow: rgba(109, 91, 166, 0.05);
+
+  --code-bg: rgba(246, 244, 252, 0.96);
+  --code-border: rgba(109, 91, 166, 0.24);
+
+  --accent-cyan: var(--accent-primary);
+  --accent-cyan-glow: var(--accent-glow);
+  --accent-purple: var(--accent-soft);
+  --accent-purple-glow: rgba(122, 104, 173, 0.2);
+  --accent-blue: var(--accent-secondary);
+}
+
+/* ==========================================================================
+   TECHNICAL WORKSPACE THEME (Developer Station / Deep Cyan-Slate)
+   ========================================================================== */
+[data-theme="technical"] {
+  --bg-primary: #070B12;
+  --bg-secondary: #0C1320;
+  --bg-radial: radial-gradient(circle at 50% 0%, #101E30 0%, #070B12 70%);
+
+  --text-primary: #F0F6FC;
+  --text-secondary: #8B949E;
+  --text-muted: #586069;
+
+  --accent-primary: #0284C7;
+  --accent-secondary: #0369A1;
+  --accent-soft: #38BDF8;
+  --accent-highlight: #38BDF8;
+  --accent-glow: rgba(56, 189, 248, 0.25);
+
+  --glass-level-1-bg: rgba(255, 255, 255, 0.03);
+  --glass-level-1-border: rgba(56, 189, 248, 0.12);
+  --glass-level-1-shadow: 0 18px 45px -10px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+
+  --glass-level-2-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0%, rgba(2, 132, 199, 0.08) 100%);
+  --glass-level-2-border: rgba(56, 189, 248, 0.24);
+  --glass-level-2-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(56, 189, 248, 0.12);
+
+  --glass-level-3-bg: rgba(2, 132, 199, 0.18);
+  --glass-level-3-border: rgba(56, 189, 248, 0.45);
+  --glass-level-3-shadow: 0 20px 50px -10px rgba(2, 132, 199, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+
+  --glass-bg: var(--glass-level-1-bg);
+  --glass-bg-hover: rgba(255, 255, 255, 0.065);
+  --glass-bg-active: var(--glass-level-3-bg);
+  --glass-border: var(--glass-level-1-border);
+  --glass-border-hover: rgba(56, 189, 248, 0.35);
+  --glass-border-active: var(--glass-level-3-border);
+  --glass-blur: 20px;
+  --glass-saturate: 160%;
+  --glass-shadow: var(--glass-level-1-shadow);
+  --glass-shadow-hover: 0 24px 55px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(56, 189, 248, 0.2);
+  --mouse-glow: rgba(56, 189, 248, 0.07);
+
+  --code-bg: rgba(10, 16, 26, 0.94);
+  --code-border: rgba(56, 189, 248, 0.35);
+}
+
+/* ==========================================================================
+   NATURE THEME (Muted Organic Sage & Moss Forest)
+   ========================================================================== */
+[data-theme="nature"] {
+  --bg-primary: #070F0D;
+  --bg-secondary: #0D1916;
+  --bg-radial: radial-gradient(circle at 50% 0%, #13241F 0%, #070F0D 70%);
+
+  --text-primary: #F0FDF4;
+  --text-secondary: #86A789;
+  --text-muted: #557153;
+
+  --accent-primary: #2D6A4F;
+  --accent-secondary: #1B4332;
+  --accent-soft: #52B788;
+  --accent-highlight: #74C69D;
+  --accent-glow: rgba(82, 183, 136, 0.24);
+
+  --glass-level-1-bg: rgba(255, 255, 255, 0.03);
+  --glass-level-1-border: rgba(82, 183, 136, 0.12);
+  --glass-level-1-shadow: 0 18px 45px -10px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.05);
+
+  --glass-level-2-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0%, rgba(45, 106, 79, 0.09) 100%);
+  --glass-level-2-border: rgba(82, 183, 136, 0.22);
+  --glass-level-2-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(82, 183, 136, 0.1);
+
+  --glass-level-3-bg: rgba(45, 106, 79, 0.2);
+  --glass-level-3-border: rgba(116, 198, 157, 0.45);
+  --glass-level-3-shadow: 0 20px 50px -10px rgba(45, 106, 79, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+
+  --glass-bg: var(--glass-level-1-bg);
+  --glass-bg-hover: rgba(255, 255, 255, 0.065);
+  --glass-bg-active: var(--glass-level-3-bg);
+  --glass-border: var(--glass-level-1-border);
+  --glass-border-hover: rgba(116, 198, 157, 0.35);
+  --glass-border-active: var(--glass-level-3-border);
+  --glass-blur: 20px;
+  --glass-saturate: 160%;
+  --glass-shadow: var(--glass-level-1-shadow);
+  --glass-shadow-hover: 0 24px 55px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(116, 198, 157, 0.2);
+  --mouse-glow: rgba(82, 183, 136, 0.07);
+
+  --code-bg: rgba(11, 22, 19, 0.94);
+  --code-border: rgba(82, 183, 136, 0.35);
+}
+
+/* ==========================================================================
+   MINIMAL THEME (Pure Slate & Platinum Restraint)
+   ========================================================================== */
+[data-theme="minimal"] {
+  --bg-primary: #0A0C10;
+  --bg-secondary: #101217;
+  --bg-radial: radial-gradient(circle at 50% 0%, #161922 0%, #0A0C10 70%);
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
+  --accent-primary: #64748B;
+  --accent-secondary: #475569;
+  --accent-soft: #94A3B8;
+  --accent-highlight: #CBD5E1;
+  --accent-glow: rgba(148, 163, 184, 0.18);
+
+  --glass-level-1-bg: rgba(255, 255, 255, 0.025);
+  --glass-level-1-border: rgba(255, 255, 255, 0.06);
+  --glass-level-1-shadow: 0 18px 45px -10px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.04);
+
+  --glass-level-2-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(100, 116, 139, 0.06) 100%);
+  --glass-level-2-border: rgba(148, 163, 184, 0.16);
+  --glass-level-2-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(148, 163, 184, 0.08);
+
+  --glass-level-3-bg: rgba(100, 116, 139, 0.15);
+  --glass-level-3-border: rgba(203, 213, 225, 0.35);
+  --glass-level-3-shadow: 0 20px 50px -10px rgba(100, 116, 139, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.16);
+
+  --glass-bg: var(--glass-level-1-bg);
+  --glass-bg-hover: rgba(255, 255, 255, 0.05);
+  --glass-bg-active: var(--glass-level-3-bg);
+  --glass-border: var(--glass-level-1-border);
+  --glass-border-hover: rgba(203, 213, 225, 0.25);
+  --glass-border-active: var(--glass-level-3-border);
+  --glass-blur: 16px;
+  --glass-saturate: 140%;
+  --glass-shadow: var(--glass-level-1-shadow);
+  --glass-shadow-hover: 0 24px 55px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(203, 213, 225, 0.15);
+  --mouse-glow: rgba(148, 163, 184, 0.05);
+
+  --code-bg: rgba(14, 17, 23, 0.94);
+  --code-border: rgba(148, 163, 184, 0.25);
+}
+
+/* ==========================================================================
+   AURORA THEME (Cosmic Teal-Magenta Atmosphere)
+   ========================================================================== */
+[data-theme="aurora"] {
+  --bg-primary: #060914;
+  --bg-secondary: #0B1022;
+  --bg-radial: radial-gradient(circle at 50% 0%, #131433 0%, #060914 70%);
+
+  --text-primary: #F3F4F6;
+  --text-secondary: #A5B4FC;
+  --text-muted: #6366F1;
+
+  --accent-primary: #0D9488;
+  --accent-secondary: #7C3AED;
+  --accent-soft: #2DD4BF;
+  --accent-highlight: #C084FC;
+  --accent-glow: rgba(45, 212, 191, 0.25);
+
+  --glass-level-1-bg: rgba(255, 255, 255, 0.035);
+  --glass-level-1-border: rgba(45, 212, 191, 0.14);
+  --glass-level-1-shadow: 0 18px 45px -10px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.06);
+
+  --glass-level-2-bg: linear-gradient(135deg, rgba(45, 212, 191, 0.05) 0%, rgba(124, 58, 237, 0.08) 100%);
+  --glass-level-2-border: rgba(192, 132, 252, 0.25);
+  --glass-level-2-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(192, 132, 252, 0.14);
+
+  --glass-level-3-bg: rgba(124, 58, 237, 0.2);
+  --glass-level-3-border: rgba(45, 212, 191, 0.45);
+  --glass-level-3-shadow: 0 20px 50px -10px rgba(124, 58, 237, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.22);
+
+  --glass-bg: var(--glass-level-1-bg);
+  --glass-bg-hover: rgba(255, 255, 255, 0.07);
+  --glass-bg-active: var(--glass-level-3-bg);
+  --glass-border: var(--glass-level-1-border);
+  --glass-border-hover: rgba(192, 132, 252, 0.35);
+  --glass-border-active: var(--glass-level-3-border);
+  --glass-blur: 20px;
+  --glass-saturate: 160%;
+  --glass-shadow: var(--glass-level-1-shadow);
+  --glass-shadow-hover: 0 24px 55px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(192, 132, 252, 0.22);
+  --mouse-glow: rgba(45, 212, 191, 0.08);
+
+  --code-bg: rgba(11, 14, 28, 0.94);
+  --code-border: rgba(45, 212, 191, 0.35);
+}
+
+/* ==========================================================================
+   MONOCHROME THEME (High-Contrast Charcoal & Pure Silver)
+   ========================================================================== */
+[data-theme="monochrome"] {
+  --bg-primary: #070707;
+  --bg-secondary: #111111;
+  --bg-radial: radial-gradient(circle at 50% 0%, #1A1A1A 0%, #070707 70%);
+
+  --text-primary: #FFFFFF;
+  --text-secondary: #A3A3A3;
+  --text-muted: #525252;
+
+  --accent-primary: #525252;
+  --accent-secondary: #262626;
+  --accent-soft: #A3A3A3;
+  --accent-highlight: #FFFFFF;
+  --accent-glow: rgba(255, 255, 255, 0.15);
+
+  --glass-level-1-bg: rgba(255, 255, 255, 0.03);
+  --glass-level-1-border: rgba(255, 255, 255, 0.1);
+  --glass-level-1-shadow: 0 18px 45px -10px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.06);
+
+  --glass-level-2-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.02) 100%);
+  --glass-level-2-border: rgba(255, 255, 255, 0.2);
+  --glass-level-2-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 255, 255, 0.12);
+
+  --glass-level-3-bg: rgba(255, 255, 255, 0.12);
+  --glass-level-3-border: rgba(255, 255, 255, 0.5);
+  --glass-level-3-shadow: 0 20px 50px -10px rgba(255, 255, 255, 0.2), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+
+  --glass-bg: var(--glass-level-1-bg);
+  --glass-bg-hover: rgba(255, 255, 255, 0.06);
+  --glass-bg-active: var(--glass-level-3-bg);
+  --glass-border: var(--glass-level-1-border);
+  --glass-border-hover: rgba(255, 255, 255, 0.3);
+  --glass-border-active: var(--glass-level-3-border);
+  --glass-blur: 20px;
+  --glass-saturate: 140%;
+  --glass-shadow: var(--glass-level-1-shadow);
+  --glass-shadow-hover: 0 24px 55px -10px rgba(0, 0, 0, 0.85), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  --mouse-glow: rgba(255, 255, 255, 0.05);
+
+  --code-bg: rgba(14, 14, 14, 0.94);
+  --code-border: rgba(255, 255, 255, 0.3);
+}
+
+/* ==========================================================================
+   ADAPTIVE MOBILE GLASS TOKENS
+   ========================================================================== */
+@media (max-width: 768px), (pointer: coarse) {
+  :root,
+  [data-theme="night"],
+  [data-theme="day"],
+  [data-theme="technical"],
+  [data-theme="nature"],
+  [data-theme="minimal"],
+  [data-theme="aurora"],
+  [data-theme="monochrome"] {
+    --glass-blur: 10px;
+    --glass-saturate: 130%;
+  }
+}
+
+/* ==========================================================================
+   RESET & BASE STYLES
+   ========================================================================== */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: var(--font-sans);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  min-height: 100vh;
+  background: var(--bg-radial);
+  background-attachment: fixed;
+  color: var(--text-primary);
+  overflow-x: hidden;
+  position: relative;
+  font-family: var(--font-sans);
+  font-weight: 400;
+  line-height: 1.65;
+  font-size: 15.5px;
+  letter-spacing: -0.005em;
+  transition: background-color var(--transition-slow), color var(--transition-slow);
+}
+
+/* Typographic Hierarchy - Headings */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+h2 {
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+h3 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+p {
+  font-family: var(--font-sans);
+  font-weight: 400;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+/* Global Section Header Standard */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.section-route-tag {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--accent-primary);
+  background: rgba(109, 91, 166, 0.08);
+  border: 1px solid rgba(109, 91, 166, 0.2);
+  padding: 3px 8px;
+  border-radius: var(--radius-xs);
+}
+
+[data-theme="night"] .section-route-tag {
+  color: var(--accent-soft);
+  background: rgba(139, 123, 184, 0.1);
+  border-color: rgba(139, 123, 184, 0.25);
+}
+
+.section-number {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.section-title {
+  font-family: var(--font-sans);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--text-primary);
+}
+
+.section-divider {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--glass-border), transparent);
+  min-width: 40px;
+}
+
+.section-component-pill {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* Hide default cursor on desktop when custom cursor is active */
+@media (pointer: fine) {
+  body.custom-cursor-active,
+  body.custom-cursor-active a,
+  body.custom-cursor-active button,
+  body.custom-cursor-active input,
+  body.custom-cursor-active textarea {
+    cursor: none !important;
+  }
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+/* Selection highlight */
+::selection {
+  background: var(--accent-primary);
+  color: #FFFFFF;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 7px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(154, 154, 175, 0.25);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-soft);
+}
+
+/* Accessibility: Prefers Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001s !important;
+    scroll-behavior: auto !important;
+  }
+}

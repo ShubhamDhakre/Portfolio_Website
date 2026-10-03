@@ -1,0 +1,180 @@
+/* ==========================================================================
+   EASTER EGG DEVELOPER CONSOLE MODAL
+   - Apple-inspired liquid glass retro-futuristic terminal
+   - Traffic lights window chrome
+   - Monospace typography & clean input prompt
+   ========================================================================== */
+
+.easter-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(8, 11, 22, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.easter-modal-console {
+  position: relative;
+  width: 100%;
+  max-width: 580px;
+  background: rgba(13, 17, 32, 0.94);
+  border: 1px solid var(--code-border);
+  backdrop-filter: blur(24px) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(24px) saturate(var(--glass-saturate));
+  border-radius: var(--radius-md);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 30px var(--accent-glow);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: consoleSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.easter-modal-console::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 35%;
+  background: var(--glass-specular);
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+@keyframes consoleSlideUp {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.console-titlebar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border-bottom: 1px solid var(--code-border);
+}
+
+.console-traffic-lights {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+  outline: none;
+}
+.dot.red { background: #ef4444; }
+.dot.yellow { background: #f59e0b; }
+.dot.green { background: #10b981; }
+
+.console-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.console-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.console-close-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.console-body {
+  position: relative;
+  z-index: 1;
+  padding: 20px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  max-height: 380px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.console-line.sys {
+  color: var(--accent-highlight);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.console-line.cmd,
+.console-line.user {
+  color: var(--accent-soft);
+}
+
+.console-line.out,
+.console-line.output {
+  color: var(--text-primary);
+}
+
+.console-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.prompt-symbol {
+  color: var(--accent-highlight);
+  font-weight: 700;
+}
+
+.console-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+
+.console-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.6;
+}

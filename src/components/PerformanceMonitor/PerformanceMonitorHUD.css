@@ -1,0 +1,118 @@
+/* ==========================================================================
+   PERFORMANCE MONITOR HUD (Developer Diagnostic Overlay)
+   - Only visible when perfMonitorEnabled or debugMode is active
+   - Liquid Violet Glass styling matching Private Workspace
+   ========================================================================== */
+
+.perf-monitor-overlay {
+  position: fixed;
+  top: 76px;
+  right: 24px;
+  z-index: 9995;
+  background: var(--glass-level-2-bg);
+  border: 1px solid var(--glass-level-2-border);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 15px var(--accent-glow);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-secondary);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 220px;
+  pointer-events: auto;
+  user-select: none;
+  animation: hudSlideDown 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes hudSlideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.perf-hud-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--glass-level-1-border);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+.perf-hud-title {
+  color: var(--accent-highlight);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.perf-hud-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0 2px;
+  transition: color var(--transition-fast);
+}
+
+.perf-hud-close:hover {
+  color: #ef4444;
+}
+
+.perf-hud-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.perf-hud-key {
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+.perf-hud-val {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.perf-fps-badge {
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  font-size: 11.5px;
+}
+
+.perf-fps-good {
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+}
+
+.perf-fps-med {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.15);
+}
+
+.perf-fps-low {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.15);
+}
+
+@media (max-width: 640px) {
+  .perf-monitor-overlay {
+    top: auto;
+    bottom: 90px;
+    right: 16px;
+    left: 16px;
+    min-width: auto;
+  }
+}

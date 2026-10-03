@@ -1,0 +1,106 @@
+/* ==========================================================================
+   FOOTER STYLES
+   - Minimal and clean Liquid Glass footer
+   - Centered alignment with back-to-top action and Git branch badge
+   ========================================================================== */
+
+.footer-container {
+  padding: 40px 24px 60px;
+  border-top: 1px solid var(--glass-border);
+  margin-top: 40px;
+}
+
+.footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-copyright {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.footer-branch-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--accent-highlight);
+  background: var(--glass-level-1-bg);
+  padding: 3px 9px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-level-1-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.branch-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.footer-tech {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.footer-top-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: var(--glass-level-1-bg);
+  border: 1px solid var(--glass-level-1-border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.footer-top-btn:hover {
+  color: var(--accent-highlight);
+  border-color: var(--accent-highlight);
+  background: var(--glass-level-2-bg);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px var(--accent-glow);
+}
+
+.top-arrow {
+  transition: transform var(--transition-fast);
+}
+
+.footer-top-btn:hover .top-arrow {
+  transform: translateY(-2px);
+}
+
+@media (max-width: 640px) {
+  .footer-content {
+    flex-direction: column;
+    text-align: center;
+    justify-content: center;
+  }
+  .footer-left {
+    flex-direction: column;
+    gap: 6px;
+  }
+}

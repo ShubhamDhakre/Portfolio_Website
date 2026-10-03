@@ -1,0 +1,356 @@
+/* ==========================================================================
+   DEVELOPER STATUS COMPONENT STYLES
+   - Fixed Bottom-Right Workspace HUD Utility
+   - Subtle Liquid-Glass material with top specular reflection
+   - Compact dimensions (320px–360px desktop)
+   - Isolated local hover (never affects adjacent cards)
+   - Mobile safe-area handling and collapsible mode
+   ========================================================================== */
+
+.developer-status-fixed {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  width: 340px;
+  max-width: calc(100vw - 48px);
+  z-index: 90;
+  background: var(--glass-level-1-bg);
+  border: 1px solid var(--glass-level-1-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(115%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(115%);
+  border-radius: var(--radius-md);
+  padding: 18px 20px 16px;
+  box-shadow: 0 14px 38px rgba(45, 36, 70, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.28s ease,
+              box-shadow 0.28s ease,
+              background 0.28s ease;
+}
+
+/* Top specular reflection */
+.developer-status-fixed::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 42%;
+  background: var(--glass-specular);
+  border-top-left-radius: var(--radius-md);
+  border-top-right-radius: var(--radius-md);
+  pointer-events: none;
+  opacity: 0.45;
+  transition: opacity 0.28s ease;
+}
+
+/* Isolated local hover state */
+.developer-status-fixed:hover {
+  transform: translateY(-3px);
+  border-color: rgba(109, 91, 166, 0.32);
+  box-shadow: 0 18px 45px rgba(45, 36, 70, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+.developer-status-fixed:hover::before {
+  opacity: 0.75;
+}
+
+/* 1. Top Bar: System Label & Minimize Button */
+.status-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+
+.status-meta-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-live-dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.45);
+  animation: livePulse 2s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+@keyframes livePulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.2);
+  }
+}
+
+.status-system-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.status-toggle-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: rgba(109, 91, 166, 0.06);
+  border: 1px solid rgba(109, 91, 166, 0.15);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  padding: 0;
+}
+
+.status-toggle-btn:hover {
+  color: var(--accent-primary);
+  border-color: rgba(109, 91, 166, 0.35);
+  background: rgba(109, 91, 166, 0.12);
+}
+
+[data-theme="night"] .status-toggle-btn:hover {
+  color: var(--accent-soft);
+}
+
+/* 2. Clock & Date Block */
+.status-clock-block {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  position: relative;
+  z-index: 1;
+}
+
+.status-time-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.status-time-digits {
+  font-family: var(--font-sans);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  color: var(--text-primary);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.status-tz-pill {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  color: var(--accent-primary);
+  background: rgba(109, 91, 166, 0.08);
+  border: 1px solid rgba(109, 91, 166, 0.2);
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+}
+
+[data-theme="night"] .status-tz-pill {
+  color: var(--accent-soft);
+  border-color: rgba(139, 123, 184, 0.25);
+  background: rgba(139, 123, 184, 0.1);
+}
+
+.status-date-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+}
+
+/* 3. Subtle Card Divider */
+.status-card-divider {
+  width: 100%;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--glass-border), transparent);
+}
+
+/* 4. Developer Thought Block */
+.status-thought-block {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  position: relative;
+  z-index: 1;
+}
+
+.thought-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.thought-section-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--accent-primary);
+}
+
+[data-theme="night"] .thought-section-label {
+  color: var(--accent-soft);
+}
+
+.thought-refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: var(--radius-full);
+  background: var(--glass-level-1-bg);
+  border: 1px solid var(--glass-level-1-border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  user-select: none;
+}
+
+.thought-refresh-btn:hover {
+  color: var(--accent-primary);
+  border-color: rgba(109, 91, 166, 0.3);
+  background: rgba(109, 91, 166, 0.08);
+}
+
+[data-theme="night"] .thought-refresh-btn:hover {
+  color: var(--accent-soft);
+  border-color: rgba(139, 123, 184, 0.35);
+}
+
+.refresh-symbol {
+  font-size: 10px;
+  transition: transform 0.25s ease;
+}
+
+.thought-refresh-btn:hover .refresh-symbol {
+  transform: rotate(180deg);
+}
+
+/* Thought Quote Area */
+.thought-quote-area {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.thought-quote-area.thought-fade-out {
+  opacity: 0;
+  transform: translateY(3px);
+}
+
+.thought-quote-text {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 450;
+  font-style: italic;
+  line-height: 1.5;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+/* ==========================================================================
+   MINIMIZED STATUS PILL (Collapsed State)
+   ========================================================================== */
+.developer-status-fixed.is-mini {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  width: auto;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(45, 36, 70, 0.08);
+}
+
+.developer-status-fixed.is-mini:hover {
+  transform: translateY(-2px);
+  border-color: rgba(109, 91, 166, 0.35);
+}
+
+.mini-time {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-thought-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--accent-primary);
+}
+
+[data-theme="night"] .mini-thought-tag {
+  color: var(--accent-soft);
+}
+
+.mini-expand-btn {
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  line-height: 1;
+}
+
+.developer-status-fixed.is-mini:hover .mini-expand-btn {
+  color: var(--accent-primary);
+}
+
+/* Responsive Handling */
+@media (max-width: 640px) {
+  .developer-status-fixed {
+    right: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+    width: calc(100vw - 32px);
+    padding: 14px 16px;
+  }
+
+  .developer-status-fixed.is-mini {
+    right: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+  }
+
+  .status-time-digits {
+    font-size: 21px;
+  }
+
+  .thought-quote-text {
+    font-size: 12px;
+  }
+}
+

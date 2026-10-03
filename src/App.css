@@ -1,0 +1,72 @@
+/* ==========================================================================
+   APP COMPONENT STYLES
+   - Main container layout
+   - Dynamic mouse-following radial glow background
+   - Ambient technical digital grid
+   - IntersectionObserver scroll reveal classes
+   ========================================================================== */
+
+.app-layout {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* Mouse-following radial ambient spotlight layer (Desktop Fine Pointer only) */
+.mouse-spotlight-layer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    var(--spotlight-size, 650px) circle at var(--mouse-x, 50vw) var(--mouse-y, 30vh),
+    var(--mouse-glow),
+    transparent 75%
+  );
+  transition: background 0.15s ease-out;
+}
+
+@media (pointer: coarse), (hover: none) {
+  .mouse-spotlight-layer {
+    display: none !important;
+  }
+}
+
+/* Grid completely removed - replaced by organic WebSystemBackground component */
+
+
+#main-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* Ensure floating navbar never covers section headers when navigating */
+section {
+  scroll-margin-top: 96px;
+}
+
+/* Scroll Reveal Effect using CSS transitions */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.scroll-reveal.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Prefers-reduced-motion fallback */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}

@@ -1,0 +1,150 @@
+/* ==========================================================================
+   THREE.JS SCENE CONTAINER
+   - Dark muted purple subtle drop-shadow
+   - Interactive core state indicator badge (CORE.STATUS = READY / ACTIVE / EXPLORING)
+   ========================================================================== */
+
+.three-scene-container {
+  width: 100%;
+  height: 100%;
+  min-height: 480px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-y;
+  overflow: visible;
+}
+
+.three-scene-container:active {
+  cursor: grabbing;
+}
+
+.three-scene-container canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  outline: none;
+  filter: drop-shadow(0 0 24px rgba(109, 91, 166, 0.22));
+}
+
+/* Interactive core state badge */
+.core-state-indicator {
+  position: absolute;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 14px;
+  border-radius: var(--radius-full);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  pointer-events: none;
+  transition: all var(--transition-fast);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.core-state-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all var(--transition-fast);
+}
+
+.core-state-dot.dot-ready {
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+}
+
+.core-state-dot.dot-active {
+  background: var(--accent-highlight);
+  box-shadow: 0 0 10px var(--accent-glow);
+  animation: dotPulse 1.2s infinite ease-in-out;
+}
+
+.core-state-dot.dot-processing {
+  background: #3b82f6;
+  box-shadow: 0 0 10px rgba(59, 130, 246, 0.7);
+  animation: dotPulse 0.5s infinite ease-in-out;
+}
+
+.core-state-dot.dot-private,
+.core-state-dot.dot-private-access,
+.core-state-dot.dot-initializing,
+.core-state-dot.dot-private-workspace {
+  background: var(--accent-highlight);
+  box-shadow: 0 0 14px var(--accent-glow);
+  animation: dotPulse 0.6s infinite ease-in-out;
+}
+
+/* Mobile Long Press Feedback Indicator */
+.core-touch-feedback {
+  position: absolute;
+  top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-md);
+  background: var(--glass-level-2-bg);
+  border: 1px solid var(--accent-primary);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5), 0 0 20px var(--accent-glow);
+  pointer-events: none;
+  animation: feedbackPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 10;
+}
+
+@keyframes feedbackPop {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.feedback-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--accent-highlight);
+}
+
+.feedback-progress-track {
+  width: 140px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+}
+
+.feedback-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-primary), var(--accent-soft));
+  box-shadow: 0 0 8px var(--accent-glow);
+  transition: width 0.04s linear;
+}
+
+@media (max-width: 960px) {
+  .three-scene-container {
+    min-height: 400px;
+  }
+}
+
+@media (max-width: 640px) {
+  .three-scene-container {
+    min-height: 320px;
+  }
+}
+

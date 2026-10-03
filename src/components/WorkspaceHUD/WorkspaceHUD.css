@@ -1,0 +1,172 @@
+/* ==========================================================================
+   WORKSPACE HUD COMPONENT STYLES
+   - Fixed Bottom-Left Session Uptime & Contextual Focus Pill
+   - Liquid-Glass Material System with gentle heartbeat pulse
+   - Isolated local hover (never affects adjacent components)
+   ========================================================================== */
+
+.workspace-hud {
+  position: fixed;
+  left: 32px;
+  bottom: 32px;
+  z-index: 90;
+  pointer-events: auto;
+}
+
+.hud-pill {
+  position: relative;
+  background: var(--glass-level-1-bg);
+  border: 1px solid var(--glass-level-1-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(115%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(115%);
+  border-radius: var(--radius-full);
+  padding: 8px 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 10px 30px rgba(45, 36, 70, 0.05), inset 0 1px 1px rgba(255, 255, 255, 0.6);
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.28s ease,
+              box-shadow 0.28s ease,
+              background 0.28s ease;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Subtle top specular reflection */
+.hud-pill::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50%;
+  background: var(--glass-specular);
+  border-top-left-radius: var(--radius-full);
+  border-top-right-radius: var(--radius-full);
+  pointer-events: none;
+  opacity: 0.45;
+  transition: opacity 0.28s ease;
+}
+
+/* Isolated local hover */
+.hud-pill:hover {
+  transform: translateY(-2px);
+  border-color: rgba(109, 91, 166, 0.32);
+  box-shadow: 0 14px 35px rgba(45, 36, 70, 0.09), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+}
+
+.hud-pill:hover::before {
+  opacity: 0.75;
+}
+
+/* 1. Heartbeat & Uptime Group */
+.hud-heartbeat-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hud-heartbeat-dot {
+  width: 6.5px;
+  height: 6.5px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.45);
+  animation: heartbeatPulse 2.4s infinite ease-in-out;
+  flex-shrink: 0;
+}
+
+@keyframes heartbeatPulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  35% {
+    opacity: 0.45;
+    transform: scale(1.25);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1.05);
+  }
+}
+
+.hud-uptime-label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.hud-uptime-value {
+  font-family: var(--font-sans);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Divider */
+.hud-divider {
+  width: 1px;
+  height: 14px;
+  background: linear-gradient(to bottom, transparent, var(--glass-border), transparent);
+}
+
+/* 2. Contextual Focus & Route */
+.hud-context-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hud-exploring-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--accent-primary);
+  background: rgba(109, 91, 166, 0.08);
+  border: 1px solid rgba(109, 91, 166, 0.2);
+  padding: 1px 6px;
+  border-radius: var(--radius-xs);
+  transition: all 0.25s ease;
+}
+
+[data-theme="night"] .hud-exploring-tag {
+  color: var(--accent-soft);
+  border-color: rgba(139, 123, 184, 0.25);
+  background: rgba(139, 123, 184, 0.1);
+}
+
+.hud-focus-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+  transition: color 0.25s ease;
+  white-space: nowrap;
+}
+
+/* Responsive Rules */
+@media (max-width: 1024px) {
+  .hud-focus-label {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .workspace-hud {
+    left: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom, 16px));
+  }
+}
+
+@media (max-width: 480px) {
+  .workspace-hud {
+    display: none; /* Keep mobile viewport completely clean and uncluttered */
+  }
+}

@@ -1,0 +1,313 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const DATA_DIR = path.resolve(__dirname, '../data');
+const SETTINGS_FILE = path.join(DATA_DIR, 'site-settings.json');
+const BACKUP_FILE = path.join(DATA_DIR, 'site-settings.backup.json');
+const TEMP_FILE = path.join(DATA_DIR, 'site-settings.tmp.json');
+
+const DEFAULT_GLOBAL = {
+  theme: 'default', // 'default' | 'technical' | 'nature' | 'minimal' | 'aurora' | 'monochrome' | 'custom'
+  customThemeName: '',
+  background: 'digital-web', // 'digital-web' | 'neural-flow' | 'data-stream' | 'organic-flow' | 'starfield' | 'digital-code-flow' | 'custom'
+  customBackgroundName: '',
+  performanceMode: 'BALANCED', // 'EXTREME_SMOOTH' | 'SMOOTH' | 'BALANCED' | 'HIGH_QUALITY' | 'EXTREME_QUALITY' | 'AUTO'
+  threeEnabled: true,
+  threeInteraction: true,
+  digitalCoreEnabled: true,
+  particlesEnabled: true,
+  particleQuality: 'MEDIUM', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
+  glassEnabled: true,
+  glassQuality: 'MEDIUM', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
+  backgroundEnabled: true,
+  backgroundQuality: 'MEDIUM', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
+  scrollEffects: true,
+  mouseEffects: true,
+  customCursor: true,
+  animationQuality: 'MEDIUM', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
+  renderScale: 'AUTO', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
+};
+
+const DEFAULT_SETTINGS = {
+  version: 1,
+  updatedAt: new Date().toISOString(),
+  updatedBy: 'system',
+  global: { ...DEFAULT_GLOBAL },
+  settings: { ...DEFAULT_GLOBAL },
+  content: {
+    notes: 'Refining liquid glass depth & 3D raycasting performance\nExperiment with client-side WebGL shader refraction next',
+    currentFocus: 'Web + AI Systems // Full-stack Architecture & ML',
+    currentExperiment: 'Three.js Digital Glass Core',
+    developerNote: 'Build first. Refine later. Keep the interface curious.',
+  },
+  customThemes: [],
+  customBackgrounds: []
+};
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+/**
+ * Validate incoming settings payload to prevent arbitrary injection
+ */
+export function validateSettingsPayload(payload) {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Invalid payload format. Must be an object.');
+  }
+
+  const errors = [];
+  const sanitized = {
+    global: {},
+    settings: {},
+    content: {},
+    customThemes: undefined,
+    customBackgrounds: undefined
+  };
+
+  const allowedThemes = ['default', 'technical', 'nature', 'minimal', 'aurora', 'monochrome', 'custom', 'night', 'day'];
+  const allowedBackgrounds = ['digital-web', 'neural-flow', 'data-stream', 'organic-flow', 'starfield', 'digital-code-flow', 'custom'];
+  const allowedModes = ['EXTREME_SMOOTH', 'SMOOTH', 'BALANCED', 'HIGH_QUALITY', 'EXTREME_QUALITY', 'AUTO', 'HIGH', 'LOW'];
+  const allowedQualities = ['LOW', 'MEDIUM', 'HIGH', 'AUTO'];
+
+  // Accept fields from either payload.global or payload.settings
+  const sourceSettings = payload.global || payload.settings || {};
+
+  if (sourceSettings && typeof sourceSettings === 'object') {
+    const s = sourceSettings;
+
+    if (s.theme !== undefined) {
+      const themeVal = String(s.theme).toLowerCase();
+      if (allowedThemes.includes(themeVal)) sanitized.global.theme = themeVal;
+      else errors.push(`Invalid theme: ${s.theme}`);
+    }
+
+    if (s.customThemeName !== undefined) {
+      sanitized.global.customThemeName = String(s.customThemeName).slice(0, 100);
+    }
+
+    if (s.background !== undefined) {
+      const bgVal = String(s.background).toLowerCase();
+      if (allowedBackgrounds.includes(bgVal)) sanitized.global.background = bgVal;
+      else errors.push(`Invalid background: ${s.background}`);
+    }
+
+    if (s.customBackgroundName !== undefined) {
+      sanitized.global.customBackgroundName = String(s.customBackgroundName).slice(0, 100);
+    }
+
+    if (s.performanceMode !== undefined) {
+      const mode = String(s.performanceMode).toUpperCase();
+      if (allowedModes.includes(mode)) sanitized.global.performanceMode = mode;
+      else errors.push(`Invalid performanceMode: ${s.performanceMode}`);
+    }
+
+    const booleanKeys = [
+      'threeEnabled',
+      'threeInteraction',
+      'digitalCoreEnabled',
+      'particlesEnabled',
+      'glassEnabled',
+      'backgroundEnabled',
+      'scrollEffects',
+      'mouseEffects',
+      'customCursor',
+      'scrollEffectsEnabled',
+      'mouseEffectsEnabled',
+      'cursorEnabled'
+    ];
+
+    for (const key of booleanKeys) {
+      if (s[key] !== undefined) {
+        sanitized.global[key] = Boolean(s[key]);
+      }
+    }
+
+    const qualityKeys = ['particleQuality', 'particlesQuality', 'glassQuality', 'backgroundQuality', 'animationQuality', 'renderScale'];
+    for (const key of qualityKeys) {
+      if (s[key] !== undefined) {
+        const val = String(s[key]).toUpperCase();
+        if (allowedQualities.includes(val)) {
+          const normKey = key === 'particlesQuality' ? 'particleQuality' : key;
+          sanitized.global[normKey] = val;
+        } else {
+          errors.push(`Invalid quality level for ${key}: ${s[key]}`);
+        }
+      }
+    }
+
+    // Mirror to settings for backwards compatibility
+    sanitized.settings = { ...sanitized.global };
+  }
+
+  // Content validation
+  if (payload.content && typeof payload.content === 'object') {
+    const c = payload.content;
+    const stringKeys = ['notes', 'currentFocus', 'currentExperiment', 'developerNote'];
+    for (const key of stringKeys) {
+      if (c[key] !== undefined) {
+        if (typeof c[key] === 'string') {
+          sanitized.content[key] = c[key].slice(0, 10000);
+        } else {
+          errors.push(`${key} must be a string`);
+        }
+      }
+    }
+  }
+
+  // Custom themes array validation
+  if (payload.customThemes !== undefined) {
+    if (Array.isArray(payload.customThemes)) {
+      sanitized.customThemes = payload.customThemes.slice(0, 20).map((t) => ({
+        name: String(t.name || 'Custom Theme').slice(0, 50),
+        bgColor: String(t.bgColor || '#080B16').slice(0, 30),
+        primaryText: String(t.primaryText || '#F4F2F8').slice(0, 30),
+        secondaryText: String(t.secondaryText || '#9A9AAF').slice(0, 30),
+        mutedText: String(t.mutedText || '#6F7185').slice(0, 30),
+        accent: String(t.accent || '#6D5BA6').slice(0, 30),
+        secondaryAccent: String(t.secondaryAccent || '#4A416B').slice(0, 30),
+        glassOpacity: Number(t.glassOpacity || 0.04),
+        glassBorder: String(t.glassBorder || 'rgba(109, 91, 166, 0.22)').slice(0, 50),
+        glowStrength: Number(t.glowStrength || 0.25),
+        borderOpacity: Number(t.borderOpacity || 0.2),
+        animationQuality: String(t.animationQuality || 'MEDIUM').slice(0, 20),
+        particleStyle: String(t.particleStyle || 'MEDIUM').slice(0, 20),
+        updatedAt: new Date().toISOString()
+      }));
+    } else {
+      errors.push('customThemes must be an array');
+    }
+  }
+
+  // Custom backgrounds array validation
+  if (payload.customBackgrounds !== undefined) {
+    if (Array.isArray(payload.customBackgrounds)) {
+      sanitized.customBackgrounds = payload.customBackgrounds.slice(0, 20).map((b) => ({
+        name: String(b.name || 'Custom Background').slice(0, 50),
+        type: String(b.type || 'network').slice(0, 30),
+        density: String(b.density || 'MEDIUM').slice(0, 20),
+        movement: String(b.movement || 'NORMAL').slice(0, 20),
+        connections: Boolean(b.connections !== false),
+        labels: Boolean(b.labels !== false),
+        opacity: Number(b.opacity ?? 0.35),
+        glow: Boolean(b.glow !== false),
+        nodeCount: Number(b.nodeCount || 24),
+        animationQuality: String(b.animationQuality || 'MEDIUM').slice(0, 20),
+        accent: String(b.accent || '#6D5BA6').slice(0, 30),
+        enabled: Boolean(b.enabled !== false),
+        updatedAt: new Date().toISOString()
+      }));
+    } else {
+      errors.push('customBackgrounds must be an array');
+    }
+  }
+
+  if (errors.length > 0) {
+    const err = new Error(`Validation failed: ${errors.join(', ')}`);
+    err.status = 400;
+    throw err;
+  }
+
+  return sanitized;
+}
+
+/**
+ * Read global site settings from JSON file
+ */
+export function getSiteSettings() {
+  try {
+    if (!fs.existsSync(SETTINGS_FILE)) {
+      saveSiteSettings(DEFAULT_SETTINGS, 'system_init');
+      return DEFAULT_SETTINGS;
+    }
+    const raw = fs.readFileSync(SETTINGS_FILE, 'utf8');
+    const parsed = JSON.parse(raw);
+    const globalBlock = {
+      ...DEFAULT_GLOBAL,
+      ...(parsed.global || parsed.settings || {})
+    };
+    return {
+      ...DEFAULT_SETTINGS,
+      ...parsed,
+      global: globalBlock,
+      settings: globalBlock,
+      content: { ...DEFAULT_SETTINGS.content, ...(parsed.content || {}) },
+      customThemes: Array.isArray(parsed.customThemes) ? parsed.customThemes : [],
+      customBackgrounds: Array.isArray(parsed.customBackgrounds) ? parsed.customBackgrounds : []
+    };
+  } catch (err) {
+    console.error('Failed to read site-settings.json, trying backup:', err);
+    if (fs.existsSync(BACKUP_FILE)) {
+      try {
+        const backupRaw = fs.readFileSync(BACKUP_FILE, 'utf8');
+        return JSON.parse(backupRaw);
+      } catch (backupErr) {
+        console.error('Failed to read backup file as well:', backupErr);
+      }
+    }
+    return DEFAULT_SETTINGS;
+  }
+}
+
+/**
+ * Atomically write global site settings to JSON file with backup
+ */
+export function saveSiteSettings(updatedFields, updatedBy = 'admin') {
+  const current = getSiteSettings();
+
+  const nextVersion = (current.version || 0) + 1;
+  const nextUpdatedAt = new Date().toISOString();
+
+  const mergedGlobal = {
+    ...current.global,
+    ...(updatedFields.global || updatedFields.settings || {})
+  };
+
+  const newDoc = {
+    version: nextVersion,
+    updatedAt: nextUpdatedAt,
+    updatedBy: updatedBy || 'admin',
+    global: mergedGlobal,
+    settings: mergedGlobal,
+    content: {
+      ...current.content,
+      ...(updatedFields.content || {})
+    },
+    customThemes: updatedFields.customThemes !== undefined
+      ? updatedFields.customThemes
+      : (current.customThemes || []),
+    customBackgrounds: updatedFields.customBackgrounds !== undefined
+      ? updatedFields.customBackgrounds
+      : (current.customBackgrounds || [])
+  };
+
+  const jsonString = JSON.stringify(newDoc, null, 2);
+
+  // 1. Write to temporary file
+  fs.writeFileSync(TEMP_FILE, jsonString, 'utf8');
+
+  // 2. Validate written temporary file
+  const testRead = JSON.parse(fs.readFileSync(TEMP_FILE, 'utf8'));
+  if (!testRead || testRead.version !== nextVersion) {
+    throw new Error('Atomic write verification failed on temporary file.');
+  }
+
+  // 3. Backup existing file if present
+  if (fs.existsSync(SETTINGS_FILE)) {
+    try {
+      fs.copyFileSync(SETTINGS_FILE, BACKUP_FILE);
+    } catch (bErr) {
+      console.warn('Could not create backup of settings file:', bErr);
+    }
+  }
+
+  // 4. Atomic rename temporary file to destination
+  fs.renameSync(TEMP_FILE, SETTINGS_FILE);
+
+  return newDoc;
+}
