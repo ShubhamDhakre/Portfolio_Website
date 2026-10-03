@@ -172,16 +172,40 @@
   color: var(--text-muted);
 }
 
+@media (max-width: 768px) {
+  .contact-section {
+    padding: clamp(60px, 8vh, 80px) clamp(14px, 4vw, 20px);
+  }
+}
+
 @media (max-width: 640px) {
   .contact-card {
-    padding: 36px 20px;
+    padding: 32px 18px;
+  }
+  .contact-heading {
+    font-size: clamp(1.6rem, 6.5vw, 2.2rem);
+  }
+  .contact-subtext {
+    font-size: 14.5px;
+    margin-bottom: 24px;
   }
   .contact-buttons-group {
     flex-direction: column;
     width: 100%;
+    gap: 10px;
   }
   .contact-btn {
     width: 100%;
     justify-content: center;
+  }
+}
+
+@media (max-width: 359px) {
+  .contact-card {
+    padding: 22px 12px;
+  }
+  .contact-btn {
+    font-size: 12px;
+    padding: 10px 14px;
   }
 }

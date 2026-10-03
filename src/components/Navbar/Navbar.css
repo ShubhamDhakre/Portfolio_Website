@@ -278,21 +278,108 @@
   background: rgba(109, 91, 166, 0.14);
 }
 
-/* Responsive adjustments */
-@media (max-width: 860px) {
+/* Tablet Navigation Optimizations (769px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .navbar-container {
+    max-width: 95%;
+    padding: 7px 14px;
+  }
+  .navbar-links {
+    gap: 2px;
+  }
+  .nav-link {
+    font-size: 12px;
+    padding: 5px 9px;
+  }
   .navbar-workspace-badge {
-    display: none;
+    font-size: 10px;
   }
   .navbar-system-status {
-    display: none;
+    padding: 3px 8px;
+    font-size: 9.5px;
   }
 }
 
+/* Mobile & Touch Viewports (<= 768px) */
 @media (max-width: 768px) {
+  .navbar-header {
+    padding: 0 clamp(8px, 3vw, 16px);
+    top: 12px;
+  }
+  .navbar-container {
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+  }
   .navbar-links {
     display: none;
   }
   .mobile-menu-btn {
     display: flex;
+  }
+  .navbar-system-status {
+    padding: 3px 8px;
+    font-size: 9px;
+  }
+  .navbar-actions {
+    gap: 8px;
+  }
+  .mobile-drawer {
+    left: clamp(8px, 3vw, 16px);
+    right: clamp(8px, 3vw, 16px);
+    max-height: calc(100dvh - 80px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Compact Mobile (<= 480px) */
+@media (max-width: 480px) {
+  .navbar-header {
+    top: 8px;
+    padding: 0 10px;
+  }
+  .navbar-container {
+    padding: 6px 10px;
+  }
+  .navbar-brand {
+    gap: 6px;
+  }
+  .navbar-brand-name {
+    font-size: 13px;
+  }
+  .navbar-workspace-badge {
+    display: none;
+  }
+  .navbar-easter-trigger {
+    padding: 2px 5px;
+    font-size: 10px;
+  }
+  .navbar-system-status {
+    padding: 2px 6px;
+    font-size: 8.5px;
+    letter-spacing: 0.04em;
+  }
+  .navbar-actions {
+    gap: 6px;
+  }
+}
+
+/* Very Small Mobile (<= 359px) */
+@media (max-width: 359px) {
+  .navbar-header {
+    padding: 0 6px;
+    top: 6px;
+  }
+  .navbar-container {
+    padding: 5px 8px;
+  }
+  .navbar-brand-name {
+    font-size: 12px;
+  }
+  .navbar-system-status .sys-status-text {
+    font-size: 8px;
+  }
+  .navbar-actions {
+    gap: 4px;
   }
 }

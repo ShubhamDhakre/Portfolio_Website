@@ -18,6 +18,7 @@ import WebSystemBackground from './components/WebSystemBackground/WebSystemBackg
 import PrivateControlLayer from './components/PrivateControlLayer/PrivateControlLayer';
 import PerformanceMonitorHUD from './components/PerformanceMonitor/PerformanceMonitorHUD';
 import { useGlobalSiteSettings } from './hooks/useGlobalSiteSettings';
+import { DEFAULT_DEV_PERFORMANCE } from './utils/performanceConfig';
 
 import './App.css';
 
@@ -251,6 +252,10 @@ export default function App() {
       <EasterEggModal
         isOpen={isEasterEggOpen}
         onClose={() => setIsEasterEggOpen(false)}
+        onOpenControlCenter={() => {
+          setIsEasterEggOpen(false);
+          setIsPrivateLayerOpen(true);
+        }}
       />
 
       {/* Secret Password-Protected Global Control Center */}
@@ -271,10 +276,18 @@ export default function App() {
       />
 
       {/* Developer Live Performance & Telemetry HUD Overlay */}
-      {perfSettings.perfMonitorEnabled && (
+      {(perfSettings.devPerformance?.visible ?? DEFAULT_DEV_PERFORMANCE.visible) && (
         <PerformanceMonitorHUD
           perfSettings={perfSettings}
-          onClose={() => setPerfSettings((prev) => ({ ...prev, perfMonitorEnabled: false }))}
+          devPerformance={perfSettings.devPerformance || DEFAULT_DEV_PERFORMANCE}
+          onClose={() => setPerfSettings((prev) => ({
+            ...prev,
+            devPerformance: {
+              ...(prev.devPerformance || DEFAULT_DEV_PERFORMANCE),
+              visible: false
+            },
+            perfMonitorEnabled: false
+          }))}
         />
       )}
     </div>

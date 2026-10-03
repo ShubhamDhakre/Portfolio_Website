@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './Contact.css';
 
 /**
@@ -8,6 +8,13 @@ import './Contact.css';
  */
 function Contact() {
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+    };
+  }, []);
 
   const contactInfo = {
     email: "shubhamdhakre.dev@gmail.com", // Placeholder: replace with your actual email
@@ -17,12 +24,14 @@ function Contact() {
 
   const handleCopyEmail = () => {
     const textToCopy = contactInfo.email;
+    if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard
         .writeText(textToCopy)
         .then(() => {
           setCopied(true);
-          setTimeout(() => setCopied(false), 2200);
+          copyTimerRef.current = setTimeout(() => setCopied(false), 2200);
         })
         .catch(() => {
           fallbackCopy(textToCopy);

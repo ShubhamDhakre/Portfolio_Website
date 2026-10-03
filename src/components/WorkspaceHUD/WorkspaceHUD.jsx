@@ -45,7 +45,6 @@ const SECTION_METADATA = {
 function WorkspaceHUD({ activeSection = 'hero', customFocus = null }) {
   // Session uptime counter (seconds since page load)
   const [secondsElapsed, setSecondsElapsed] = useState(0);
-  const [isHeartbeatActive, setIsHeartbeatActive] = useState(true);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -71,7 +70,7 @@ function WorkspaceHUD({ activeSection = 'hero', customFocus = null }) {
       <div className="hud-pill">
         {/* Heartbeat Status Dot */}
         <div className="hud-heartbeat-group">
-          <span className={`hud-heartbeat-dot ${isHeartbeatActive ? 'is-active' : ''}`} />
+          <span className="hud-heartbeat-dot" />
           <span className="hud-uptime-label">SESSION</span>
           <span className="hud-uptime-value">{formatUptime(secondsElapsed)}</span>
         </div>

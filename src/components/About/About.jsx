@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import profilePhoto from '../../assets/profile.jpg';
 import './About.css';
 
 /**
@@ -104,6 +105,28 @@ function About({ onStateChange }) {
 
   const currentNode = architectureNodes.find((n) => n.id === activeArchNode) || architectureNodes[1];
 
+  // Interactive 3D Perspective Tilt on Profile Photo (Bends & Reacts to cursor)
+  const [photoTilt, setPhotoTilt] = useState({ x: 0, y: 0, glareX: 50, glareY: 50, active: false });
+
+  const handlePhotoMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xRatio = (e.clientX - rect.left) / rect.width;
+    const yRatio = (e.clientY - rect.top) / rect.height;
+    const rotateY = (xRatio - 0.5) * 16; // -8 to +8 deg
+    const rotateX = -(yRatio - 0.5) * 16; // -8 to +8 deg
+    setPhotoTilt({
+      x: rotateY,
+      y: rotateX,
+      glareX: Math.round(xRatio * 100),
+      glareY: Math.round(yRatio * 100),
+      active: true
+    });
+  };
+
+  const handlePhotoMouseLeave = () => {
+    setPhotoTilt({ x: 0, y: 0, glareX: 50, glareY: 50, active: false });
+  };
+
   return (
     <section id="about" className="about-section">
       {/* Developer Section Header */}
@@ -118,16 +141,69 @@ function About({ onStateChange }) {
       <div className="about-grid">
         {/* Main Narrative Card */}
         <div className="about-card about-card-main">
-          <div className="about-badge">
-            <span className="badge-dot" />
-            STUDENT PERSPECTIVE // COMPUTER ENGINEERING
+          <div className="about-profile-layout">
+            <div className="about-photo-wrapper">
+              <div
+                className="about-photo-frame"
+                onMouseMove={handlePhotoMouseMove}
+                onMouseLeave={handlePhotoMouseLeave}
+                style={{
+                  transform: photoTilt.active
+                    ? `perspective(800px) rotateY(${photoTilt.x.toFixed(2)}deg) rotateX(${photoTilt.y.toFixed(2)}deg) scale3d(1.025, 1.025, 1.025)`
+                    : 'perspective(800px) rotateY(0deg) rotateX(0deg) scale3d(1, 1, 1)',
+                  transition: photoTilt.active ? 'transform 0.08s ease-out' : 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
+                }}
+              >
+                {/* Atmospheric Ambient Glow behind photo */}
+                <div className="photo-ambient-glow" aria-hidden="true" />
+
+                {/* Profile Photo with 0 radius & edge feather mask */}
+                <img
+                  src={profilePhoto}
+                  alt="Shubham Dhakre"
+                  className="about-profile-photo"
+                  width="1024"
+                  height="1024"
+                  loading="lazy"
+                />
+
+                {/* Edge Vignette & Blend Layer */}
+                <div className="photo-edge-vignette" aria-hidden="true" />
+
+                {/* Holographic Specular Glare (bends dynamically with tilt) */}
+                <div
+                  className="photo-specular-glare"
+                  aria-hidden="true"
+                  style={{
+                    background: photoTilt.active
+                      ? `radial-gradient(circle at ${photoTilt.glareX}% ${photoTilt.glareY}%, rgba(255, 255, 255, 0.16) 0%, rgba(139, 123, 184, 0.08) 40%, transparent 70%)`
+                      : 'none',
+                    opacity: photoTilt.active ? 1 : 0
+                  }}
+                />
+
+                {/* 4 Precision HUD Corners around image corners only */}
+                <div className="photo-corner photo-corner-tl" aria-hidden="true" />
+                <div className="photo-corner photo-corner-tr" aria-hidden="true" />
+                <div className="photo-corner photo-corner-bl" aria-hidden="true" />
+                <div className="photo-corner photo-corner-br" aria-hidden="true" />
+              </div>
+            </div>
+
+            <div className="about-profile-intro">
+              <div className="about-badge">
+                <span className="badge-dot" />
+                STUDENT PERSPECTIVE // COMPUTER ENGINEERING
+              </div>
+              <h3 className="about-subtitle">
+                Exploring the intersection of web interfaces, systems, and applied machine intelligence.
+              </h3>
+              <p className="about-paragraph">
+                I am a Computer Science / Computer Engineering undergraduate student passionate about understanding how modern software operates from the ground up. Rather than treating frameworks as black boxes, I enjoy digging into the mechanics — from component lifecycles in React to server-side event loops and machine intelligence APIs.
+              </p>
+            </div>
           </div>
-          <h3 className="about-subtitle">
-            Exploring the intersection of web interfaces, systems, and applied machine intelligence.
-          </h3>
-          <p className="about-paragraph">
-            I am a Computer Science / Computer Engineering undergraduate student passionate about understanding how modern software operates from the ground up. Rather than treating frameworks as black boxes, I enjoy digging into the mechanics — from component lifecycles in React to server-side event loops and machine intelligence APIs.
-          </p>
+
           <p className="about-paragraph">
             My primary focus is on building responsive, engaging digital workspaces and exploring how machine learning (such as computer vision landmarks and audio speech processing) can make everyday tools more interactive and constructive.
           </p>

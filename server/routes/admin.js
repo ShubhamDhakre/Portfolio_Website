@@ -14,7 +14,7 @@ import { getSiteSettings, saveSiteSettings, validateSettingsPayload } from '../s
 const router = Router();
 
 // Default fallback hash for 'admin123' if no env variable is configured
-const DEFAULT_DEV_HASH = '$2a$10$wO8j77wA6yWz2Efgd.eHfe3u/XG2yHnF04tOsz2sKjA9kE4mXU.sO';
+const DEFAULT_DEV_HASH = '$2b$10$RZ0wYXSilRceFPA3Kam3mux9Ddci5c5gQjyGnLD6mcIlKUPt6cPIa';
 
 /**
  * POST /api/admin/login
@@ -114,10 +114,10 @@ router.get('/settings', requireAdminAuth, (req, res) => {
 });
 
 /**
- * PUT /api/admin/settings
+ * PUT or POST /api/admin/settings
  * Updates global site settings atomically (requires auth)
  */
-router.put('/settings', requireAdminAuth, (req, res) => {
+const handleSaveSettings = (req, res) => {
   try {
     const validated = validateSettingsPayload(req.body);
     const updated = saveSiteSettings(validated, 'admin');
@@ -134,6 +134,9 @@ router.put('/settings', requireAdminAuth, (req, res) => {
       message: err.message || 'Server could not persist configuration.'
     });
   }
-});
+};
+
+router.put('/settings', requireAdminAuth, handleSaveSettings);
+router.post('/settings', requireAdminAuth, handleSaveSettings);
 
 export default router;

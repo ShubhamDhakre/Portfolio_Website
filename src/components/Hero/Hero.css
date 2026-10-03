@@ -9,11 +9,13 @@
 .hero-section {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding: 120px 24px 60px;
+  padding: clamp(80px, 12vh, 120px) clamp(16px, 4vw, 24px) clamp(36px, 6vh, 60px);
   max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
   overflow: visible;
 }
@@ -356,36 +358,85 @@
   }
 }
 
-/* Responsive */
+/* Responsive Breakpoints */
 @media (max-width: 960px) {
   .hero-container {
     grid-template-columns: 1fr;
     text-align: left;
-    gap: 36px;
+    gap: clamp(24px, 4vw, 36px);
   }
 
   .visual-wrapper {
-    max-width: 420px;
-    height: 420px;
+    max-width: min(420px, 80vw);
+    height: min(420px, 80vw);
     margin: 0 auto;
   }
 }
 
 @media (max-width: 640px) {
   .hero-section {
-    padding-top: 100px;
+    padding-top: clamp(76px, 10vh, 96px);
   }
 
   .hero-title {
-    font-size: 2.35rem;
+    font-size: clamp(2rem, 7.5vw, 2.7rem);
+  }
+
+  .hero-roles {
+    font-size: clamp(14px, 3.5vw, 16px);
+    flex-wrap: wrap;
+    gap: 8px;
   }
 
   .hero-description {
-    font-size: 15.5px;
+    font-size: 14.5px;
+    margin-bottom: 24px;
+  }
+
+  .hero-actions {
+    gap: 10px;
+    margin-bottom: 28px;
+    width: 100%;
+  }
+
+  .hero-actions .btn {
+    flex: 1 1 auto;
+    min-width: 135px;
+    justify-content: center;
+    padding: 11px 18px;
+    font-size: 13.5px;
+  }
+
+  .hero-quick-meta {
+    gap: 14px;
+    padding-top: 18px;
   }
 
   .visual-wrapper {
-    max-width: 320px;
-    height: 320px;
+    max-width: min(320px, 85vw);
+    height: min(320px, 85vw);
+  }
+}
+
+@media (max-width: 359px) {
+  .hero-section {
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-top: 70px;
+  }
+
+  .hero-title {
+    font-size: 1.85rem;
+  }
+
+  .hero-status-pill {
+    padding: 5px 10px;
+    gap: 6px;
+    font-size: 10px;
+  }
+
+  .visual-wrapper {
+    max-width: 250px;
+    height: 250px;
   }
 }

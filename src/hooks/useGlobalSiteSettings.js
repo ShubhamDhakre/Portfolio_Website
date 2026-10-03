@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { fetchPublicSiteSettings } from '../services/siteSettingsApi';
 import { DEFAULT_PERFORMANCE_CONFIG } from '../utils/performanceConfig';
 
@@ -80,11 +80,21 @@ export function useGlobalSiteSettings() {
   }, []);
 
   useEffect(() => {
-    fetchGlobal();
+    let isMounted = true;
+
+    const syncSettings = async () => {
+      if (isMounted) {
+        await fetchGlobal();
+      }
+    };
+    syncSettings();
 
     // Refresh every 60 seconds
     const interval = setInterval(fetchGlobal, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [fetchGlobal]);
 
   return {

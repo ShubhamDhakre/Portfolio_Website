@@ -9,7 +9,9 @@
 .app-layout {
   position: relative;
   min-height: 100vh;
+  min-height: 100dvh;
   width: 100%;
+  max-width: 100%;
   overflow-x: hidden;
 }
 
@@ -36,17 +38,20 @@
   }
 }
 
-/* Grid completely removed - replaced by organic WebSystemBackground component */
-
-
 #main-content {
   position: relative;
   z-index: 1;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 /* Ensure floating navbar never covers section headers when navigating */
 section {
-  scroll-margin-top: 96px;
+  scroll-margin-top: clamp(72px, 10vh, 96px);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 /* Scroll Reveal Effect using CSS transitions */

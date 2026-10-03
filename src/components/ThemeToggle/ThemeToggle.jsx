@@ -7,7 +7,7 @@ import './ThemeToggle.css';
  * Accessible with clear aria-label and smooth glass switch effect.
  */
 export default function ThemeToggle({ theme, toggleTheme }) {
-  const isNight = theme === 'night';
+  const isNight = theme !== 'day';
 
   return (
     <button

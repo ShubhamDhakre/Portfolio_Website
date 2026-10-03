@@ -1,13 +1,13 @@
 {
-  "version": 9,
-  "updatedAt": "2026-10-03T13:23:00.729Z",
+  "version": 16,
+  "updatedAt": "2026-10-03T21:21:19.514Z",
   "updatedBy": "admin",
   "global": {
     "theme": "monochrome",
     "customThemeName": "",
     "background": "digital-web",
     "customBackgroundName": "",
-    "performanceMode": "EXTREME_QUALITY",
+    "performanceMode": "BALANCED",
     "threeEnabled": true,
     "threeInteraction": true,
     "digitalCoreEnabled": true,
@@ -21,14 +21,26 @@
     "mouseEffects": true,
     "customCursor": true,
     "animationQuality": "HIGH",
-    "renderScale": "HIGH"
+    "renderScale": "HIGH",
+    "devPerformance": {
+      "visible": true,
+      "showFPS": true,
+      "showFrameTime": true,
+      "showDPR": true,
+      "showMode": true,
+      "showDigitalCore": true,
+      "showParticles": true,
+      "showGlassBlur": true,
+      "showScrollFX": true,
+      "showViewport": true
+    }
   },
   "settings": {
     "theme": "monochrome",
     "customThemeName": "",
     "background": "digital-web",
     "customBackgroundName": "",
-    "performanceMode": "EXTREME_QUALITY",
+    "performanceMode": "BALANCED",
     "threeEnabled": true,
     "threeInteraction": true,
     "digitalCoreEnabled": true,
@@ -42,7 +54,19 @@
     "mouseEffects": true,
     "customCursor": true,
     "animationQuality": "HIGH",
-    "renderScale": "HIGH"
+    "renderScale": "HIGH",
+    "devPerformance": {
+      "visible": true,
+      "showFPS": true,
+      "showFrameTime": true,
+      "showDPR": true,
+      "showMode": true,
+      "showDigitalCore": true,
+      "showParticles": true,
+      "showGlassBlur": true,
+      "showScrollFX": true,
+      "showViewport": true
+    }
   },
   "content": {
     "notes": "Refining liquid glass depth & 3D raycasting performance\nExperiment with client-side WebGL shader refraction next",

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   DEFAULT_PERFORMANCE_CONFIG,
+  DEFAULT_DEV_PERFORMANCE,
   PERFORMANCE_MODES
 } from '../../utils/performanceConfig';
 import {
@@ -47,7 +48,7 @@ const DEFAULT_PREFERENCES = {
 };
 
 // Available standard themes
-export const THEME_OPTIONS = [
+const THEME_OPTIONS = [
   { key: 'default', label: 'Default / Night', desc: 'Curated deep navy & liquid muted violet (#6D5BA6).' },
   { key: 'technical', label: 'Technical', desc: 'Developer workstation atmosphere with deep cyan-slate accents.' },
   { key: 'nature', label: 'Nature', desc: 'Muted organic sage, moss tones, and soft natural glass.' },
@@ -57,7 +58,7 @@ export const THEME_OPTIONS = [
 ];
 
 // Available standard background effects
-export const BACKGROUND_OPTIONS = [
+const BACKGROUND_OPTIONS = [
   { key: 'digital-web', label: 'Digital Web', desc: 'Organic 2D network with connected nodes & packet pulses.' },
   { key: 'neural-flow', label: 'Neural Flow', desc: 'Abstract synaptic nodes with curved synaptic data paths.' },
   { key: 'data-stream', label: 'Data Stream', desc: 'Horizontal high-tech bus routes with traveling discrete packets.' },
@@ -74,10 +75,15 @@ function loadPreferences() {
     const parsed = JSON.parse(raw);
     const local = parsed.localSettings || {};
     const notesObj = parsed.notes && typeof parsed.notes === 'object' ? parsed.notes : {};
+    const devPerf = local.devPerformance || parsed.devPerformance || parsed.global?.devPerformance || DEFAULT_DEV_PERFORMANCE;
     return {
       ...DEFAULT_PREFERENCES,
       ...parsed,
       ...local,
+      devPerformance: {
+        ...DEFAULT_DEV_PERFORMANCE,
+        ...(devPerf || {})
+      },
       notes: notesObj.notes || parsed.notes || parsed.content?.notes || DEFAULT_PREFERENCES.notes,
       currentFocus: notesObj.currentFocus || parsed.currentFocus || parsed.content?.currentFocus || DEFAULT_PREFERENCES.currentFocus,
       currentExperiment: notesObj.currentExperiment || parsed.currentExperiment || parsed.content?.currentExperiment || DEFAULT_PREFERENCES.currentExperiment,
@@ -111,7 +117,8 @@ function savePreferences(prefs, previewMode = false) {
         mouseEffects: prefs.mouseEffectsEnabled !== false,
         customCursor: prefs.cursorEnabled !== false,
         animationQuality: prefs.animationQuality || 'MEDIUM',
-        renderScale: prefs.renderScale || 'AUTO'
+        renderScale: prefs.renderScale || 'AUTO',
+        devPerformance: prefs.devPerformance || DEFAULT_DEV_PERFORMANCE
       },
       notes: {
         notes: prefs.notes || '',
@@ -143,7 +150,31 @@ export default function PrivateControlLayer({
   globalUpdatedAt,
   refreshGlobalSettings
 }) {
-  const [prefs, setPrefs] = useState(loadPreferences);
+  const [prefs, setPrefs] = useState(() => {
+    const loaded = loadPreferences();
+    const baseTheme = loaded.theme || theme || 'default';
+    const serverDevPerf = globalSettings?.devPerformance || globalSettings?.global?.devPerformance;
+    const initialDevPerf = serverDevPerf
+      ? { ...DEFAULT_DEV_PERFORMANCE, ...serverDevPerf }
+      : (loaded.devPerformance || DEFAULT_DEV_PERFORMANCE);
+
+    if (globalContent) {
+      return {
+        ...loaded,
+        theme: baseTheme,
+        devPerformance: initialDevPerf,
+        notes: loaded.notes || globalContent.notes || DEFAULT_PREFERENCES.notes,
+        currentFocus: loaded.currentFocus || globalContent.currentFocus || DEFAULT_PREFERENCES.currentFocus,
+        currentExperiment: loaded.currentExperiment || globalContent.currentExperiment || DEFAULT_PREFERENCES.currentExperiment,
+        developerNote: loaded.developerNote || globalContent.developerNote || DEFAULT_PREFERENCES.developerNote,
+      };
+    }
+    return {
+      ...loaded,
+      theme: baseTheme,
+      devPerformance: initialDevPerf
+    };
+  });
   const [activeTab, setActiveTab] = useState('performance'); // 'performance' | 'themes' | 'backgrounds' | 'notes' | 'environment' | 'console' | 'system' | 'log'
 
   // Target Scope: 'GLOBAL' (All Visitors) vs 'LOCAL' (This Browser Only)
@@ -159,7 +190,7 @@ export default function PrivateControlLayer({
 
   // Global Sync, Custom Studios & Conflict State
   const [serverVersion, setServerVersion] = useState(globalVersion || 1);
-  const [serverUpdatedAt, setServerUpdatedAt] = useState(globalUpdatedAt || new Date().toISOString());
+  const [serverUpdatedAt, setServerUpdatedAt] = useState(() => globalUpdatedAt || new Date().toISOString());
   const [customThemes, setCustomThemes] = useState([]);
   const [customBackgrounds, setCustomBackgrounds] = useState([]);
   const [isSavingGlobal, setIsSavingGlobal] = useState(false);
@@ -171,8 +202,9 @@ export default function PrivateControlLayer({
   const [isPreviewActive, setIsPreviewActive] = useState(() => Boolean(prefs.previewMode));
   const [previewSnapshot, setPreviewSnapshot] = useState(null);
 
-  // Global Publish Modal State
+  // Global Publish & Reset Modals State
   const [showPublishConfirmModal, setShowPublishConfirmModal] = useState(false);
+  const [showResetGlobalConfirmModal, setShowResetGlobalConfirmModal] = useState(false);
 
   // Custom Theme Creator Form State
   const [showCustomThemeCreator, setShowCustomThemeCreator] = useState(false);
@@ -203,11 +235,33 @@ export default function PrivateControlLayer({
   // Telemetry & Uptime
   const [sessionSeconds, setSessionSeconds] = useState(0);
   const [interactionCount, setInteractionCount] = useState(0);
-  const [currentMode, setCurrentMode] = useState('EXPLORING');
+  const currentMode = prefs.performanceMode || 'BALANCED';
   const [fps, setFps] = useState(60);
-  const [webglStatus, setWebglStatus] = useState('CHECKING...');
-  const [pointerType, setPointerType] = useState('MOUSE / FINE');
-  const [reducedMotion, setReducedMotion] = useState(false);
+  const [webglStatus] = useState(() => {
+    if (typeof window === 'undefined') return 'CHECKING...';
+    try {
+      const canvas = document.createElement('canvas');
+      const gl2 = canvas.getContext('webgl2');
+      const gl1 = !gl2 && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+      if (gl2) return 'WEBGL 2.0 (HARDWARE)';
+      if (gl1) return 'WEBGL 1.0 (COMPATIBLE)';
+      return 'NOT AVAILABLE';
+    } catch {
+      return 'FALLBACK 2D CANVAS';
+    }
+  });
+
+  const [pointerType] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return 'MOUSE / FINE';
+    const fine = window.matchMedia('(pointer: fine)').matches;
+    const hover = window.matchMedia('(hover: hover)').matches;
+    return fine && hover ? 'MOUSE / FINE HOVER' : fine ? 'TOUCHPAD / FINE' : 'TOUCH / COARSE';
+  });
+
+  const [reducedMotion] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return false;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  });
 
   // Terminal state
   const [terminalInput, setTerminalInput] = useState('');
@@ -217,40 +271,75 @@ export default function PrivateControlLayer({
   ]);
   const terminalEndRef = useRef(null);
 
-  // Check active server session on mount
-  const verifySession = useCallback(async () => {
-    setIsCheckingAuth(true);
-    const res = await checkAdminSession();
-    setIsAuthenticated(Boolean(res.authenticated));
-    setIsCheckingAuth(false);
+  const prefsRef = useRef(prefs);
+  useEffect(() => {
+    prefsRef.current = prefs;
+  }, [prefs]);
 
-    if (res.authenticated) {
-      try {
-        const serverData = await fetchAdminSettings();
-        if (serverData) {
-          if (serverData.version) setServerVersion(serverData.version);
-          if (serverData.updatedAt) setServerUpdatedAt(serverData.updatedAt);
-          if (serverData.customThemes) setCustomThemes(serverData.customThemes);
-          if (serverData.customBackgrounds) setCustomBackgrounds(serverData.customBackgrounds);
-          if (serverData.content) {
-            setServerContentCache(serverData.content);
-            const localNotes = prefs.notes || '';
-            const serverNotes = serverData.content.notes || '';
-            if (localNotes && serverNotes && localNotes !== serverNotes) {
-              setHasConflict(true);
+  // Check active server session on mount (stable ref to avoid network call storms on note edits)
+  const verifySession = useCallback(async () => {
+    try {
+      const res = await checkAdminSession();
+      setIsAuthenticated(Boolean(res.authenticated));
+
+      if (res.authenticated) {
+        try {
+          const serverData = await fetchAdminSettings();
+          if (serverData) {
+            if (serverData.version) setServerVersion(serverData.version);
+            if (serverData.updatedAt) setServerUpdatedAt(serverData.updatedAt);
+            if (serverData.customThemes) setCustomThemes(serverData.customThemes);
+            if (serverData.customBackgrounds) setCustomBackgrounds(serverData.customBackgrounds);
+            if (serverData.content) {
+              setServerContentCache(serverData.content);
+              const localNotes = prefsRef.current?.notes || '';
+              const serverNotes = serverData.content.notes || '';
+              if (localNotes && serverNotes && localNotes !== serverNotes) {
+                setHasConflict(true);
+              }
             }
           }
+        } catch (err) {
+          console.warn('Could not fetch admin settings:', err.message);
         }
-      } catch (err) {
-        console.warn('Could not fetch admin settings:', err.message);
       }
+    } catch (err) {
+      console.warn('Session check failed:', err);
+    } finally {
+      setIsCheckingAuth(false);
     }
-  }, [prefs.notes]);
+  }, []);
 
+  // Live FPS measurement and session check when panel is open
   useEffect(() => {
-    if (isOpen) {
-      verifySession();
-    }
+    if (!isOpen) return;
+
+    let isMounted = true;
+    (async () => {
+      if (isMounted) await verifySession();
+    })();
+
+    let frameCount = 0;
+    let lastTime = performance.now();
+    let animId;
+
+    const measureLoop = (now) => {
+      frameCount++;
+      const elapsed = now - lastTime;
+      if (elapsed >= 500) {
+        setFps(Math.round((frameCount * 1000) / elapsed));
+        frameCount = 0;
+        lastTime = now;
+      }
+      animId = requestAnimationFrame(measureLoop);
+    };
+
+    animId = requestAnimationFrame(measureLoop);
+
+    return () => {
+      isMounted = false;
+      if (animId) cancelAnimationFrame(animId);
+    };
   }, [isOpen, verifySession]);
 
   const logInteraction = useCallback((message) => {
@@ -282,10 +371,21 @@ export default function PrivateControlLayer({
   const updatePref = (key, value) => {
     setPrefs((prev) => {
       const next = { ...prev, [key]: value };
-      savePreferences(next);
+      savePreferences(next, isPreviewActive);
       return next;
     });
     logInteraction(`Updated ${key} -> ${JSON.stringify(value)}`);
+  };
+
+  const updateDevPerf = (key, value) => {
+    setPrefs((prev) => {
+      const currentDevPerf = prev.devPerformance || DEFAULT_DEV_PERFORMANCE;
+      const nextDevPerf = { ...currentDevPerf, [key]: value };
+      const next = { ...prev, devPerformance: nextDevPerf };
+      savePreferences(next, isPreviewActive);
+      return next;
+    });
+    logInteraction(`DEV // PERFORMANCE: ${key} -> ${value ? 'ON' : 'OFF'}`);
   };
 
   const showToast = (text, type = 'info', duration = 3000) => {
@@ -542,6 +642,18 @@ export default function PrivateControlLayer({
           customCursor: prefs.cursorEnabled !== false,
           animationQuality: prefs.animationQuality || 'MEDIUM',
           renderScale: prefs.renderScale || 'AUTO',
+          devPerformance: {
+            visible: prefs.devPerformance?.visible !== false,
+            showFPS: prefs.devPerformance?.showFPS !== false,
+            showFrameTime: prefs.devPerformance?.showFrameTime !== false,
+            showDPR: prefs.devPerformance?.showDPR !== false,
+            showMode: prefs.devPerformance?.showMode !== false,
+            showDigitalCore: prefs.devPerformance?.showDigitalCore !== false,
+            showParticles: prefs.devPerformance?.showParticles !== false,
+            showGlassBlur: prefs.devPerformance?.showGlassBlur !== false,
+            showScrollFX: prefs.devPerformance?.showScrollFX !== false,
+            showViewport: prefs.devPerformance?.showViewport !== false,
+          }
         },
         content: {
           notes: prefs.notes || '',
@@ -575,6 +687,133 @@ export default function PrivateControlLayer({
     } finally {
       setIsSavingGlobal(false);
     }
+  };
+
+  // Reset Global Settings to Safe Baseline (leaves localStorage local settings intact)
+  const handleResetGlobal = async () => {
+    setShowResetGlobalConfirmModal(false);
+    setIsSavingGlobal(true);
+
+    try {
+      const resetPayload = {
+        global: {
+          theme: 'default',
+          background: 'digital-web',
+          performanceMode: 'BALANCED',
+          threeEnabled: true,
+          threeInteraction: true,
+          digitalCoreEnabled: true,
+          particlesEnabled: true,
+          particleQuality: 'MEDIUM',
+          glassEnabled: true,
+          glassQuality: 'MEDIUM',
+          backgroundEnabled: true,
+          backgroundQuality: 'MEDIUM',
+          scrollEffects: true,
+          mouseEffects: true,
+          customCursor: true,
+          animationQuality: 'MEDIUM',
+          renderScale: 'AUTO',
+          devPerformance: { ...DEFAULT_DEV_PERFORMANCE }
+        },
+        content: {
+          notes: prefs.notes || 'Refining liquid glass depth & 3D raycasting performance\nExperiment with client-side WebGL shader refraction next',
+          currentFocus: prefs.currentFocus || 'Web + AI Systems // Full-stack Architecture & ML',
+          currentExperiment: prefs.currentExperiment || 'Three.js Digital Glass Core',
+          developerNote: prefs.developerNote || 'Build first. Refine later. Keep the interface curious.'
+        }
+      };
+
+      const result = await saveAdminSettings(resetPayload);
+      if (result.success && result.data) {
+        setServerVersion(result.data.version);
+        setServerUpdatedAt(result.data.updatedAt);
+        setIsPreviewActive(false);
+
+        setPrefs((prev) => {
+          const next = {
+            ...prev,
+            ...resetPayload.global,
+            devPerformance: { ...DEFAULT_DEV_PERFORMANCE }
+          };
+          savePreferences(next, false);
+          return next;
+        });
+
+        if (setTheme) setTheme('default');
+        if (onPrefsChange) onPrefsChange({ ...resetPayload.global, devPerformance: { ...DEFAULT_DEV_PERFORMANCE } });
+        if (refreshGlobalSettings) refreshGlobalSettings();
+
+        showToast(`GLOBAL WEBSITE SETTINGS RESET TO SAFE BASELINE (v${result.data.version})`, 'success', 4500);
+        logInteraction(`Reset global website settings to baseline v${result.data.version}`);
+      }
+    } catch (err) {
+      showToast(err.message || 'GLOBAL RESET FAILED', 'error', 4500);
+      logInteraction(`Global reset failed: ${err.message}`);
+    } finally {
+      setIsSavingGlobal(false);
+    }
+  };
+
+  // Compute live differences between active server configuration and staged settings
+  const getChangeSummary = () => {
+    const changes = [];
+    const serverDevPerf = globalSettings?.devPerformance || globalSettings?.global?.devPerformance || DEFAULT_DEV_PERFORMANCE;
+    const currentDevPerf = prefs.devPerformance || DEFAULT_DEV_PERFORMANCE;
+
+    // DEV // PERFORMANCE panel visibility
+    const serverVisible = serverDevPerf.visible !== false;
+    const stagedVisible = currentDevPerf.visible !== false;
+    changes.push({
+      label: 'DEV // PERFORMANCE',
+      from: serverVisible ? 'ON' : 'OFF',
+      to: stagedVisible ? 'ON' : 'OFF',
+      changed: serverVisible !== stagedVisible
+    });
+
+    // Row items
+    const rowKeys = [
+      { key: 'showFPS', label: 'FPS' },
+      { key: 'showFrameTime', label: 'FRAME TIME' },
+      { key: 'showDPR', label: 'DEVICE DPR' },
+      { key: 'showMode', label: 'MODE' },
+      { key: 'showDigitalCore', label: '3D DIGITAL CORE' },
+      { key: 'showParticles', label: 'PARTICLES' },
+      { key: 'showGlassBlur', label: 'GLASS BLUR' },
+      { key: 'showScrollFX', label: 'SCROLL FX' },
+      { key: 'showViewport', label: 'VIEWPORT' },
+    ];
+
+    rowKeys.forEach(({ key, label }) => {
+      const fromVal = serverDevPerf[key] !== false ? 'ON' : 'OFF';
+      const toVal = currentDevPerf[key] !== false ? 'ON' : 'OFF';
+      changes.push({
+        label,
+        from: fromVal,
+        to: toVal,
+        changed: fromVal !== toVal
+      });
+    });
+
+    const serverMode = (globalSettings?.performanceMode || 'BALANCED').toUpperCase();
+    const stagedMode = (prefs.performanceMode || 'BALANCED').toUpperCase();
+    if (serverMode !== stagedMode) {
+      changes.push({ label: 'MODE', from: serverMode, to: stagedMode, changed: true });
+    }
+
+    const serverTheme = (globalSettings?.theme || 'default').toUpperCase();
+    const stagedTheme = (prefs.theme || 'default').toUpperCase();
+    if (serverTheme !== stagedTheme) {
+      changes.push({ label: 'THEME', from: serverTheme, to: stagedTheme, changed: true });
+    }
+
+    const serverBg = (globalSettings?.background || 'digital-web').toUpperCase();
+    const stagedBg = (prefs.background || 'digital-web').toUpperCase();
+    if (serverBg !== stagedBg) {
+      changes.push({ label: 'BACKGROUND', from: serverBg, to: stagedBg, changed: true });
+    }
+
+    return changes;
   };
 
   // Refresh Global Config from Server
@@ -612,6 +851,7 @@ export default function PrivateControlLayer({
         logInteraction('Refreshed settings from global server JSON');
       }
     } catch (err) {
+      console.warn('Failed to refresh server config:', err);
       showToast('FAILED TO REFRESH SERVER CONFIG', 'error');
     }
   };
@@ -832,6 +1072,239 @@ export default function PrivateControlLayer({
     }
   }, [terminalHistory, activeTab]);
 
+  const devPerf = prefs.devPerformance || DEFAULT_DEV_PERFORMANCE;
+
+  const renderGlobalWebsiteControl = () => (
+    <div className="private-section-card global-control-master-card">
+      <div className="card-heading">
+        <span className="card-title">GLOBAL WEBSITE CONTROL</span>
+        <span className="card-subtext">Direct server-side configuration applied to all visitors</span>
+      </div>
+
+      {/* GLOBAL WEBSITE STATUS (Section 16) */}
+      <div className="global-live-status-block">
+        <div className="status-indicator-row">
+          <span className="live-pulse-dot" />
+          <span className="live-status-title">GLOBAL WEBSITE STATUS</span>
+          <span className="live-scope-badge">● LIVE • APPLIES TO ALL VISITORS</span>
+        </div>
+        <div className="status-grid-two-col">
+          <div className="status-mini-item">
+            <span className="mini-k">DEV // PERFORMANCE</span>
+            <span className={`mini-v ${(devPerf.visible ?? DEFAULT_DEV_PERFORMANCE.visible) ? 'live-on' : 'live-off'}`}>
+              {(devPerf.visible ?? DEFAULT_DEV_PERFORMANCE.visible) ? 'VISIBLE (ON)' : 'HIDDEN (OFF)'}
+            </span>
+          </div>
+          <div className="status-mini-item">
+            <span className="mini-k">LAST PUBLISHED</span>
+            <span className="mini-v">{formatTime(serverUpdatedAt)}</span>
+          </div>
+          <div className="status-mini-item">
+            <span className="mini-k">PUBLISHED SETTINGS</span>
+            <span className="mini-v">{prefs.performanceMode || 'BALANCED'} • {prefs.theme?.toUpperCase()} • v{serverVersion}</span>
+          </div>
+          <div className="status-mini-item">
+            <span className="mini-k">APPLIES TO</span>
+            <span className="mini-v" style={{ color: 'var(--accent-primary)' }}>ALL VISITORS</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Scope Indicator Box (Section 2) */}
+      <div className="global-scope-indicator-banner">
+        <span className="banner-dot">●</span>
+        <span className="banner-title">GLOBAL LIVE</span>
+        <span className="banner-divider">//</span>
+        <span className="banner-val">DEV // PERFORMANCE: {(devPerf.visible ?? DEFAULT_DEV_PERFORMANCE.visible) ? 'ON' : 'OFF'}</span>
+        <span className="banner-sub">Applies to ALL VISITORS</span>
+      </div>
+
+      {/* DEV // PERFORMANCE PANEL VISIBILITY TOGGLE (Section 2) */}
+      <div className="control-item panel-visibility-item">
+        <div className="control-header-row">
+          <div className="control-title-desc">
+            <span className="control-label">Show DEV // PERFORMANCE panel</span>
+            <span className="control-desc">Controls visibility of the performance panel for all visitors.</span>
+          </div>
+          <button
+            type="button"
+            className={`toggle-pill-btn lg ${(devPerf.visible ?? DEFAULT_DEV_PERFORMANCE.visible) ? 'on' : 'off'}`}
+            onClick={() => updateDevPerf('visible', !(devPerf.visible ?? DEFAULT_DEV_PERFORMANCE.visible))}
+          >
+            {(devPerf.visible ?? DEFAULT_DEV_PERFORMANCE.visible) ? '● ON' : '○ OFF'}
+          </button>
+        </div>
+      </div>
+
+      {/* INDIVIDUAL PERFORMANCE ROW CONTROLS (Section 3 & 8) */}
+      <div className="perf-rows-control-subcard">
+        <div className="subcard-header">
+          <span className="subcard-title">DEV // PERFORMANCE CONTENT</span>
+          <span className="subcard-desc">Individual telemetry row visibility switches</span>
+        </div>
+
+        <div className="controls-grid">
+          {/* FPS */}
+          <div className="control-item">
+            <div className="control-header-row">
+              <span className="control-label">FPS</span>
+              <button
+                type="button"
+                className={`toggle-pill-btn ${(devPerf.showFPS ?? DEFAULT_DEV_PERFORMANCE.showFPS) ? 'on' : 'off'}`}
+                onClick={() => updateDevPerf('showFPS', !(devPerf.showFPS ?? DEFAULT_DEV_PERFORMANCE.showFPS))}
+              >
+                {(devPerf.showFPS ?? DEFAULT_DEV_PERFORMANCE.showFPS) ? '● ON' : '○ OFF'}
+              </button>
+            </div>
+          </div>
+
+          {/* Frame Time */}
+          <div className="control-item">
+            <div className="control-header-row">
+              <span className="control-label">FRAME TIME</span>
+              <button
+                type="button"
+                className={`toggle-pill-btn ${(devPerf.showFrameTime ?? DEFAULT_DEV_PERFORMANCE.showFrameTime) ? 'on' : 'off'}`}
+                onClick={() => updateDevPerf('showFrameTime', !(devPerf.showFrameTime ?? DEFAULT_DEV_PERFORMANCE.showFrameTime))}
+              >
+                {(devPerf.showFrameTime ?? DEFAULT_DEV_PERFORMANCE.showFrameTime) ? '● ON' : '○ OFF'}
+              </button>
+            </div>
+          </div>
+
+          {/* Device DPR */}
+          <div className="control-item">
+            <div className="control-header-row">
+              <span className="control-label">DEVICE DPR</span>
+              <button
+                type="button"
+                className={`toggle-pill-btn ${(devPerf.showDPR ?? DEFAULT_DEV_PERFORMANCE.showDPR) ? 'on' : 'off'}`}
+                onClick={() => updateDevPerf('showDPR', !(devPerf.showDPR ?? DEFAULT_DEV_PERFORMANCE.showDPR))}
+              >
+                {(devPerf.showDPR ?? DEFAULT_DEV_PERFORMANCE.showDPR) ? '● ON' : '○ OFF'}
+              </button>
+            </div>
+          </div>
+
+          {/* Mode */}
+          <div className="control-item">
+            <div className="control-header-row">
+              <span className="control-label">MODE</span>
+              <button
+                type="button"
+                className={`toggle-pill-btn ${(devPerf.showMode ?? DEFAULT_DEV_PERFORMANCE.showMode) ? 'on' : 'off'}`}
+                onClick={() => updateDevPerf('showMode', !(devPerf.showMode ?? DEFAULT_DEV_PERFORMANCE.showMode))}
+              >
+                {(devPerf.showMode ?? DEFAULT_DEV_PERFORMANCE.showMode) ? '● ON' : '○ OFF'}
+              </button>
+            </div>
+          </div>
+
+          {/* 3D Digital Core */}
+          <div className="control-item">
+            <div className="control-header-row">
+              <span className="control-label">3D DIGITAL CORE</span>
+              <button
+                type="button"
+                className={`toggle-pill-btn ${(devPerf.showDigitalCore ?? DEFAULT_DEV_PERFORMANCE.showDigitalCore) ? 'on' : 'off'}`}
+                onClick={() => updateDevPerf('showDigitalCore', !(devPerf.showDigitalCore ?? DEFAULT_DEV_PERFORMANCE.showDigitalCore))}
+              >
+                {(devPerf.showDigitalCore ?? DEFAULT_DEV_PERFORMANCE.showDigitalCore) ? '● ON' : '○ OFF'}
+              </button>
+            </div>
+          </div>
+
+          {/* Particles */}
+          <div className="control-item">
+            <div className="control-header-row">
+              <span className="control-label">PARTICLES</span>
+              <button
+                type="button"
+                className={`toggle-pill-btn ${(devPerf.showParticles ?? DEFAULT_DEV_PERFORMANCE.showParticles) ? 'on' : 'off'}`}
+                onClick={() => updateDevPerf('showParticles', !(devPerf.showParticles ?? DEFAULT_DEV_PERFORMANCE.showParticles))}
+              >
+                {(devPerf.showParticles ?? DEFAULT_DEV_PERFORMANCE.showParticles) ? '● ON' : '○ OFF'}
+              </button>
+            </div>
+          </div>
+
+          {/* Glass Blur */}
+          <div className="control-item">
+            <div className="control-header-row">
+              <span className="control-label">GLASS BLUR</span>
+              <button
+                type="button"
+                className={`toggle-pill-btn ${(devPerf.showGlassBlur ?? DEFAULT_DEV_PERFORMANCE.showGlassBlur) ? 'on' : 'off'}`}
+                onClick={() => updateDevPerf('showGlassBlur', !(devPerf.showGlassBlur ?? DEFAULT_DEV_PERFORMANCE.showGlassBlur))}
+              >
+                {(devPerf.showGlassBlur ?? DEFAULT_DEV_PERFORMANCE.showGlassBlur) ? '● ON' : '○ OFF'}
+              </button>
+            </div>
+          </div>
+
+          {/* Scroll FX */}
+          <div className="control-item">
+            <div className="control-header-row">
+              <span className="control-label">SCROLL FX</span>
+              <button
+                type="button"
+                className={`toggle-pill-btn ${(devPerf.showScrollFX ?? DEFAULT_DEV_PERFORMANCE.showScrollFX) ? 'on' : 'off'}`}
+                onClick={() => updateDevPerf('showScrollFX', !(devPerf.showScrollFX ?? DEFAULT_DEV_PERFORMANCE.showScrollFX))}
+              >
+                {(devPerf.showScrollFX ?? DEFAULT_DEV_PERFORMANCE.showScrollFX) ? '● ON' : '○ OFF'}
+              </button>
+            </div>
+          </div>
+
+          {/* Viewport */}
+          <div className="control-item">
+            <div className="control-header-row">
+              <span className="control-label">VIEWPORT</span>
+              <button
+                type="button"
+                className={`toggle-pill-btn ${(devPerf.showViewport ?? DEFAULT_DEV_PERFORMANCE.showViewport) ? 'on' : 'off'}`}
+                onClick={() => updateDevPerf('showViewport', !(devPerf.showViewport ?? DEFAULT_DEV_PERFORMANCE.showViewport))}
+              >
+                {(devPerf.showViewport ?? DEFAULT_DEV_PERFORMANCE.showViewport) ? '● ON' : '○ OFF'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Direct Actions (Section 8) */}
+      <div className="global-actions-bar">
+        <button
+          type="button"
+          className={`btn-action-preview ${isPreviewActive ? 'active' : ''}`}
+          onClick={isPreviewActive ? handleExitPreview : handleStartPreview}
+          title="Preview DEV // PERFORMANCE changes locally in this browser without modifying server"
+        >
+          {isPreviewActive ? '✕ EXIT LOCAL PREVIEW' : '👁️ PREVIEW LOCALLY'}
+        </button>
+
+        <button
+          type="button"
+          className="btn-action-publish"
+          onClick={() => setShowPublishConfirmModal(true)}
+          disabled={isSavingGlobal}
+          title="Publish these settings globally to server JSON for all visitors"
+        >
+          {isSavingGlobal ? 'PUBLISHING...' : '⚡ PUBLISH GLOBALLY'}
+        </button>
+
+        <button
+          type="button"
+          className="btn-action-reset"
+          onClick={() => setShowResetGlobalConfirmModal(true)}
+          title="Reset server global configuration to safe defaults"
+        >
+          ↺ RESET GLOBAL
+        </button>
+      </div>
+    </div>
+  );
+
   return (
     <>
       {/* Secret Corner Hotspot */}
@@ -916,13 +1389,22 @@ export default function PrivateControlLayer({
             </div>
 
             <div className="publish-summary-card">
-              <div className="summary-row"><span>THEME</span><strong>{prefs.theme?.toUpperCase()}</strong></div>
-              <div className="summary-row"><span>BACKGROUND</span><strong>{prefs.background?.toUpperCase()}</strong></div>
-              <div className="summary-row"><span>PERFORMANCE</span><strong>{prefs.performanceMode || 'BALANCED'}</strong></div>
-              <div className="summary-row"><span>PARTICLES</span><strong>{prefs.particleQuality || 'MEDIUM'} ({prefs.particlesEnabled !== false ? 'ON' : 'OFF'})</strong></div>
-              <div className="summary-row"><span>GLASS</span><strong>{prefs.glassQuality || 'MEDIUM'} ({prefs.glassEnabled !== false ? 'ON' : 'OFF'})</strong></div>
+              <div className="summary-section-label">GLOBAL CHANGES</div>
+              <div className="summary-changes-grid">
+                {getChangeSummary().map((item) => (
+                  <div key={item.label} className={`summary-row ${item.changed ? 'highlight-change' : ''}`}>
+                    <span className="summary-key">{item.label}</span>
+                    <span className="summary-val">
+                      {item.from} → <strong className={item.to === 'ON' ? 'text-green' : item.to === 'OFF' ? 'text-red' : 'text-purple'}>{item.to}</strong>
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="summary-divider" />
+
               <div className="summary-row"><span>SCOPE</span><strong style={{ color: '#8b5cf6' }}>ALL VISITORS</strong></div>
-              <div className="summary-row"><span>VERSION</span><strong>v{serverVersion + 1}</strong></div>
+              <div className="summary-row"><span>NEXT VERSION</span><strong>v{serverVersion + 1}</strong></div>
             </div>
 
             <div className="publish-modal-actions">
@@ -941,6 +1423,52 @@ export default function PrivateControlLayer({
                 disabled={isSavingGlobal}
               >
                 {isSavingGlobal ? 'PUBLISHING...' : '⚡ PUBLISH GLOBALLY'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Global Confirmation Modal */}
+      {showResetGlobalConfirmModal && (
+        <div className="publish-confirm-overlay" role="dialog" aria-modal="true">
+          <div className="publish-confirm-modal reset-modal">
+            <div className="publish-modal-header">
+              <span className="publish-badge badge-warning">RESET GLOBAL</span>
+              <h3>RESET GLOBAL WEBSITE SETTINGS?</h3>
+              <p className="publish-subtext">This affects all visitors. Local settings and private notes will be preserved.</p>
+            </div>
+
+            <div className="publish-summary-card">
+              <p className="reset-modal-desc">
+                This will reset server-side global settings to the project's safe baseline:
+                <br /><br />
+                • <strong>THEME:</strong> Default / Night
+                <br />
+                • <strong>BACKGROUND:</strong> Digital Web
+                <br />
+                • <strong>PERFORMANCE MODE:</strong> BALANCED
+                <br />
+                • <strong>DEV // PERFORMANCE:</strong> VISIBLE (ALL 9 ROWS ON)
+              </p>
+            </div>
+
+            <div className="publish-modal-actions">
+              <button
+                type="button"
+                className="btn-cancel-publish"
+                onClick={() => setShowResetGlobalConfirmModal(false)}
+                disabled={isSavingGlobal}
+              >
+                CANCEL
+              </button>
+              <button
+                type="button"
+                className="btn-confirm-reset"
+                onClick={handleResetGlobal}
+                disabled={isSavingGlobal}
+              >
+                {isSavingGlobal ? 'RESETTING...' : '↺ CONFIRM RESET GLOBAL'}
               </button>
             </div>
           </div>
@@ -993,61 +1521,71 @@ export default function PrivateControlLayer({
             {!isAuthenticated ? (
               <div className="auth-prompt-container">
                 <div className="auth-card">
-                  <div className="auth-header">
-                    <span className="auth-lock-icon">🔒</span>
-                    <h3>SHUBHAM-CORE AUTHENTICATION</h3>
-                    <p className="auth-desc">
-                      Enter developer password to access global performance controls and website configuration.
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleLogin} className="auth-form">
-                    <div className="field-group">
-                      <label className="field-label" htmlFor="admin-pass-input">DEVELOPER PASSWORD</label>
-                      <div className="password-input-wrap">
-                        <input
-                          id="admin-pass-input"
-                          type={showPassword ? 'text' : 'password'}
-                          className="field-input password-field"
-                          placeholder="Enter admin password..."
-                          value={passwordInput}
-                          onChange={(e) => setPasswordInput(e.target.value)}
-                          autoFocus
-                          disabled={loginLoading}
-                        />
-                        <button
-                          type="button"
-                          className="toggle-pass-visibility-btn"
-                          onClick={() => setShowPassword(!showPassword)}
-                          tabIndex={-1}
-                          title={showPassword ? 'Hide password' : 'Show password'}
-                        >
-                          {showPassword ? 'HIDE' : 'SHOW'}
-                        </button>
-                      </div>
+                  {isCheckingAuth ? (
+                    <div className="auth-header" style={{ padding: '32px 16px', textAlign: 'center' }}>
+                      <span className="auth-lock-icon">⚡</span>
+                      <h3>VERIFYING ACTIVE SESSION...</h3>
+                      <p className="auth-desc">Authenticating with Shubham-Core API</p>
                     </div>
-
-                    {loginError && (
-                      <div className="auth-error-banner" role="alert">
-                        <span className="error-icon">✕</span>
-                        <span>{loginError}</span>
+                  ) : (
+                    <>
+                      <div className="auth-header">
+                        <span className="auth-lock-icon">🔒</span>
+                        <h3>SHUBHAM-CORE AUTHENTICATION</h3>
+                        <p className="auth-desc">
+                          Enter developer password to access global performance controls and website configuration. (Default: <code>admin123</code>)
+                        </p>
                       </div>
-                    )}
 
-                    <div className="auth-actions-row">
-                      <button
-                        type="submit"
-                        className="btn-auth-submit"
-                        disabled={loginLoading || !passwordInput}
-                      >
-                        {loginLoading ? 'VERIFYING CREDENTIALS...' : 'AUTHENTICATE & UNLOCK'}
-                      </button>
-                    </div>
-                  </form>
+                      <form onSubmit={handleLogin} className="auth-form">
+                        <div className="field-group">
+                          <label className="field-label" htmlFor="admin-pass-input">DEVELOPER PASSWORD</label>
+                          <div className="password-input-wrap">
+                            <input
+                              id="admin-pass-input"
+                              type={showPassword ? 'text' : 'password'}
+                              className="field-input password-field"
+                              placeholder="Enter admin password..."
+                              value={passwordInput}
+                              onChange={(e) => setPasswordInput(e.target.value)}
+                              autoFocus
+                              disabled={loginLoading}
+                            />
+                            <button
+                              type="button"
+                              className="toggle-pass-visibility-btn"
+                              onClick={() => setShowPassword(!showPassword)}
+                              tabIndex={-1}
+                              title={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                              {showPassword ? 'HIDE' : 'SHOW'}
+                            </button>
+                          </div>
+                        </div>
 
-                  <div className="auth-footer-notice">
-                    <span>SECURITY: SERVER-SIDE HASH VERIFICATION • HTTPONLY SESSIONS</span>
-                  </div>
+                        {loginError && (
+                          <div className="auth-error-banner" role="alert">
+                            <span className="error-icon">✕</span>
+                            <span>{loginError}</span>
+                          </div>
+                        )}
+
+                        <div className="auth-actions-row">
+                          <button
+                            type="submit"
+                            className="btn-auth-submit"
+                            disabled={loginLoading || !passwordInput}
+                          >
+                            {loginLoading ? 'VERIFYING CREDENTIALS...' : 'AUTHENTICATE & UNLOCK'}
+                          </button>
+                        </div>
+                      </form>
+
+                      <div className="auth-footer-notice">
+                        <span>SECURITY: SERVER-SIDE HASH VERIFICATION • HTTPONLY SESSIONS</span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
@@ -1067,6 +1605,12 @@ export default function PrivateControlLayer({
                     <div className="meta-pill">
                       <span className="meta-k">STATUS</span>
                       <span className="meta-v live">● LIVE</span>
+                    </div>
+                    <div className="meta-pill">
+                      <span className="meta-k">DEV // PERF</span>
+                      <span className="meta-v" style={{ color: (prefs.devPerformance?.visible ?? DEFAULT_DEV_PERFORMANCE.visible) ? '#34d399' : '#f87171' }}>
+                        {(prefs.devPerformance?.visible ?? DEFAULT_DEV_PERFORMANCE.visible) ? 'VISIBLE (ON)' : 'HIDDEN (OFF)'}
+                      </span>
                     </div>
                     <div className="meta-pill">
                       <span className="meta-k">THEME</span>
@@ -1119,6 +1663,15 @@ export default function PrivateControlLayer({
 
                 {/* Navigation Tabs */}
                 <div className="private-panel-tabs" role="tablist">
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'global-control'}
+                    className={`tab-btn ${activeTab === 'global-control' ? 'active' : ''}`}
+                    onClick={() => { setActiveTab('global-control'); setCurrentMode('GLOBAL_CONTROL'); }}
+                  >
+                    🌐 Global Website Control
+                  </button>
                   <button
                     type="button"
                     role="tab"
@@ -1186,9 +1739,19 @@ export default function PrivateControlLayer({
 
                 {/* Panel Content Body */}
                 <div className="private-panel-content">
+                  {/* TAB 0: GLOBAL WEBSITE CONTROL */}
+                  {activeTab === 'global-control' && (
+                    <div className="global-control-tab-wrapper">
+                      {renderGlobalWebsiteControl()}
+                    </div>
+                  )}
+
                   {/* TAB 1: GLOBAL PERFORMANCE & SUBSYSTEMS */}
                   {activeTab === 'performance' && (
                     <>
+                      {/* Global Website Control - DEV // PERFORMANCE Visibility */}
+                      {renderGlobalWebsiteControl()}
+
                       {/* Scope Selector Box */}
                       <div className="scope-selector-card">
                         <div className="scope-header-row">
@@ -1556,8 +2119,20 @@ export default function PrivateControlLayer({
 
                       <div className="private-section-card">
                         <div className="card-heading">
-                          <span className="card-title">09 / THEMES ({scopeMode === 'LOCAL' ? 'LOCAL PREVIEW' : 'GLOBAL PALETTE'})</span>
-                          <span className="card-subtext">Active Theme: {prefs.theme?.toUpperCase()}</span>
+                          <div>
+                            <span className="card-title">09 / THEMES ({scopeMode === 'LOCAL' ? 'LOCAL PREVIEW' : 'GLOBAL PALETTE'})</span>
+                            <span className="card-subtext">Active Theme: {prefs.theme?.toUpperCase()}</span>
+                          </div>
+                          {toggleTheme && (
+                            <button
+                              type="button"
+                              className="btn-toggle-creator"
+                              onClick={toggleTheme}
+                              title="Quick Toggle between Day and Night themes"
+                            >
+                              ☀️/🌙 QUICK TOGGLE DAY/NIGHT
+                            </button>
+                          )}
                         </div>
 
                         <div className="themes-palette-grid">
@@ -1674,6 +2249,34 @@ export default function PrivateControlLayer({
                                   className="field-input"
                                   value={newThemeSecondary}
                                   onChange={(e) => setNewThemeSecondary(e.target.value)}
+                                />
+                              </div>
+
+                              <div className="field-group">
+                                <label className="field-label" htmlFor="ct-glass">GLASS OPACITY ({(newThemeGlassOpacity * 100).toFixed(0)}%)</label>
+                                <input
+                                  id="ct-glass"
+                                  type="range"
+                                  min="0.01"
+                                  max="0.25"
+                                  step="0.01"
+                                  className="field-input"
+                                  value={newThemeGlassOpacity}
+                                  onChange={(e) => setNewThemeGlassOpacity(Number(e.target.value))}
+                                />
+                              </div>
+
+                              <div className="field-group">
+                                <label className="field-label" htmlFor="ct-glow">GLOW STRENGTH ({(newThemeGlow * 100).toFixed(0)}%)</label>
+                                <input
+                                  id="ct-glow"
+                                  type="range"
+                                  min="0.05"
+                                  max="0.80"
+                                  step="0.05"
+                                  className="field-input"
+                                  value={newThemeGlow}
+                                  onChange={(e) => setNewThemeGlow(Number(e.target.value))}
                                 />
                               </div>
                             </div>
@@ -1864,6 +2467,32 @@ export default function PrivateControlLayer({
                                   onChange={(e) => setNewBgAccent(e.target.value)}
                                 />
                               </div>
+
+                              <div className="field-group">
+                                <label className="field-label" htmlFor="cbg-connections">CONNECTIONS</label>
+                                <label className="checkbox-toggle-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '6px' }}>
+                                  <input
+                                    id="cbg-connections"
+                                    type="checkbox"
+                                    checked={newBgConnections}
+                                    onChange={(e) => setNewBgConnections(e.target.checked)}
+                                  />
+                                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>ENABLE NODE CONNECTIONS</span>
+                                </label>
+                              </div>
+
+                              <div className="field-group">
+                                <label className="field-label" htmlFor="cbg-labels">TECHNICAL LABELS</label>
+                                <label className="checkbox-toggle-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '6px' }}>
+                                  <input
+                                    id="cbg-labels"
+                                    type="checkbox"
+                                    checked={newBgLabels}
+                                    onChange={(e) => setNewBgLabels(e.target.checked)}
+                                  />
+                                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>SHOW CODE TOKENS</span>
+                                </label>
+                              </div>
                             </div>
 
                             <div className="creator-actions">
@@ -2021,7 +2650,7 @@ export default function PrivateControlLayer({
                         </div>
                         <div className="diag-item">
                           <span className="diag-key">ACTIVE MODE</span>
-                          <span className="diag-val">{prefs.performanceMode || 'BALANCED'}</span>
+                          <span className="diag-val">{currentMode}</span>
                         </div>
                         <div className="diag-item">
                           <span className="diag-key">LIVE RENDERING FPS</span>
@@ -2030,6 +2659,14 @@ export default function PrivateControlLayer({
                         <div className="diag-item">
                           <span className="diag-key">WEBGL CONTEXT</span>
                           <span className="diag-val">{webglStatus}</span>
+                        </div>
+                        <div className="diag-item">
+                          <span className="diag-key">POINTER ENVIRONMENT</span>
+                          <span className="diag-val">{pointerType}</span>
+                        </div>
+                        <div className="diag-item">
+                          <span className="diag-key">MOTION PREFERENCE</span>
+                          <span className="diag-val">{reducedMotion ? 'REDUCED (MINIMAL MOTION)' : 'FULL MOTION (ALL FX)'}</span>
                         </div>
                         <div className="diag-item">
                           <span className="diag-key">SESSION UPTIME</span>

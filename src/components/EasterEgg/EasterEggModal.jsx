@@ -6,7 +6,7 @@ import './EasterEggModal.css';
  * Hidden developer terminal triggered by clicking `</>` 5 times (or Ctrl+K / Cmd+K).
  * Emulates a sleek dark glass developer console with interactive commands.
  */
-export default function EasterEggModal({ isOpen, onClose }) {
+export default function EasterEggModal({ isOpen, onClose, onOpenControlCenter }) {
   const [commandInput, setCommandInput] = useState('');
   const [history, setHistory] = useState([
     { type: 'system', text: 'SYSTEM OVERRIDE // AUTHORIZED DEVELOPER ACCESS' },
@@ -62,6 +62,12 @@ export default function EasterEggModal({ isOpen, onClose }) {
       response = 'Web + AI // Full-stack architecture, Three.js & applied ML.';
     } else if (cmd === 'build') {
       response = 'In progress... Building interactive digital experiences.';
+    } else if (cmd === 'admin' || cmd === 'control' || cmd === 'private') {
+      if (onOpenControlCenter) {
+        onOpenControlCenter();
+        return;
+      }
+      response = 'Opening Private Control Center...';
     } else if (cmd === 'clear') {
       setHistory([]);
       setCommandInput('');
@@ -70,7 +76,7 @@ export default function EasterEggModal({ isOpen, onClose }) {
       onClose();
       return;
     } else if (cmd === 'help') {
-      response = 'Commands: whoami, status, curiosity, current_focus, build, clear, exit';
+      response = 'Commands: whoami, status, curiosity, current_focus, build, admin, clear, exit';
     } else {
       response = `Command not recognized: "${cmd}". Type "help" for options.`;
     }

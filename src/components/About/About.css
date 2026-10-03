@@ -507,8 +507,223 @@
   color: var(--text-secondary);
 }
 
-@media (max-width: 900px) {
+/* ==========================================================================
+   RESPONSIVE PROFILE PHOTO & ADAPTIVE LAYOUT
+   ========================================================================== */
+.about-profile-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(20px, 3.5vw, 36px);
+  margin-bottom: 24px;
+}
+
+.about-photo-wrapper {
+  flex-shrink: 0;
+  position: relative;
+}
+
+.about-photo-frame {
+  position: relative;
+  width: clamp(200px, 22vw, 260px);
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 0; /* Zero radius */
+  padding: 0;
+  background: transparent;
+  border: none; /* No border or white edges */
+  outline: none;
+  box-shadow: none;
+  overflow: visible;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+/* Atmospheric Glow behind photo that softly bleeds into the about section */
+.photo-ambient-glow {
+  position: absolute;
+  inset: -14px;
+  background: radial-gradient(ellipse at 50% 45%, rgba(109, 91, 166, 0.38) 0%, rgba(56, 189, 248, 0.14) 45%, transparent 72%);
+  filter: blur(24px);
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.65;
+  transition: opacity var(--transition-normal), transform var(--transition-normal);
+}
+
+.about-photo-frame:hover .photo-ambient-glow {
+  opacity: 0.95;
+  transform: scale(1.06);
+}
+
+/* Profile Photo - Zero radius & edge feather mask for seamless blending */
+.about-profile-photo {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 100%;
+  height: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  object-position: center top;
+  border-radius: 0; /* Zero radius */
+  border: none;
+  outline: none;
+  display: block;
+  filter: contrast(102%) brightness(98%);
+  transition: filter var(--transition-normal);
+
+  /* Soft edge feathering so edges dissolve seamlessly into the about section */
+  -webkit-mask-image: radial-gradient(ellipse 95% 95% at 50% 48%, #000 58%, rgba(0, 0, 0, 0.8) 78%, transparent 100%);
+  mask-image: radial-gradient(ellipse 95% 95% at 50% 48%, #000 58%, rgba(0, 0, 0, 0.8) 78%, transparent 100%);
+}
+
+.about-photo-frame:hover .about-profile-photo {
+  filter: contrast(105%) brightness(102%);
+}
+
+/* Vignette edge blend layer over the photo */
+.photo-edge-vignette {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+  border: none;
+  outline: none;
+  z-index: 2;
+  pointer-events: none;
+  background: radial-gradient(ellipse 92% 92% at 50% 48%, transparent 55%, rgba(8, 11, 22, 0.45) 78%, rgba(8, 11, 22, 0.95) 100%);
+  mix-blend-mode: multiply;
+}
+
+[data-theme="day"] .photo-edge-vignette {
+  background: radial-gradient(ellipse 92% 92% at 50% 48%, transparent 55%, rgba(243, 242, 247, 0.45) 78%, rgba(243, 242, 247, 0.95) 100%);
+  mix-blend-mode: normal;
+}
+
+/* Specular holographic glare responding to cursor bend */
+.photo-specular-glare {
+  position: absolute;
+  inset: 0;
+  border-radius: 0;
+  border: none;
+  outline: none;
+  z-index: 4;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+/* Rebuilt Precision HUD Corners (around image corners only) */
+.photo-corner {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-style: solid;
+  border-color: var(--accent-primary);
+  border-radius: 0;
+  pointer-events: none;
+  z-index: 5;
+  transition: border-color var(--transition-normal), transform var(--transition-normal), filter var(--transition-normal);
+}
+
+.photo-corner-tl {
+  top: -4px;
+  left: -4px;
+  border-width: 2px 0 0 2px;
+}
+
+.photo-corner-tr {
+  top: -4px;
+  right: -4px;
+  border-width: 2px 2px 0 0;
+}
+
+.photo-corner-bl {
+  bottom: -4px;
+  left: -4px;
+  border-width: 0 0 2px 2px;
+}
+
+.photo-corner-br {
+  bottom: -4px;
+  right: -4px;
+  border-width: 0 2px 2px 0;
+}
+
+.about-photo-frame:hover .photo-corner {
+  border-color: #38bdf8;
+  filter: drop-shadow(0 0 5px rgba(56, 189, 248, 0.65));
+}
+
+.about-photo-frame:hover .photo-corner-tl {
+  transform: translate(-3px, -3px);
+}
+
+.about-photo-frame:hover .photo-corner-tr {
+  transform: translate(3px, -3px);
+}
+
+.about-photo-frame:hover .photo-corner-bl {
+  transform: translate(-3px, 3px);
+}
+
+.about-photo-frame:hover .photo-corner-br {
+  transform: translate(3px, 3px);
+}
+
+.about-profile-intro {
+  flex: 1;
+}
+
+/* Tablet Optimizations (768px - 1024px) */
+@media (max-width: 960px) {
   .about-grid {
     grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .about-profile-layout {
+    gap: 20px;
+  }
+  .about-photo-frame {
+    width: clamp(150px, 22vw, 190px);
+  }
+}
+
+/* Mobile: Stack naturally: PHOTO -> NAME/PROFILE -> DESCRIPTION -> DETAILS */
+@media (max-width: 768px) {
+  .about-section {
+    padding: clamp(60px, 8vh, 80px) clamp(14px, 4vw, 20px);
+  }
+  .about-card {
+    padding: clamp(20px, 4vw, 28px);
+  }
+  .about-profile-layout {
+    flex-direction: column;
+    align-items: center;
+    text-align: left;
+    gap: 18px;
+  }
+  .about-photo-wrapper {
+    margin: 0 auto 6px;
+  }
+  .about-photo-frame {
+    width: min(210px, 60vw);
+    margin: 0 auto;
+  }
+  .about-profile-intro {
+    width: 100%;
+  }
+  .about-architecture-section {
+    padding: 20px 16px;
+  }
+}
+
+@media (max-width: 359px) {
+  .about-card {
+    padding: 16px 12px;
+  }
+  .about-photo-frame {
+    width: 170px;
+  }
+  .about-subtitle {
+    font-size: 17px;
   }
 }

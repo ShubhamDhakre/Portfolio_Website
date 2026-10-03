@@ -81,8 +81,8 @@
   white-space: nowrap;
 }
 
-/* Disable on touch devices */
-@media (pointer: coarse) {
+/* Disable on touch/coarse pointer devices */
+@media (pointer: coarse), (hover: none) {
   .custom-cursor {
     display: none !important;
   }

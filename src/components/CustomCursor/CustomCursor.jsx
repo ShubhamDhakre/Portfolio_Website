@@ -63,16 +63,16 @@ export default function CustomCursor({ cursorEnabled = true }) {
         cursorRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
       }
 
-      // Update ambient spotlight CSS variables smoothly
-      document.documentElement.style.setProperty('--mouse-x', `${Math.round(targetX)}px`);
-      document.documentElement.style.setProperty('--mouse-y', `${Math.round(targetY)}px`);
-
       rafId = requestAnimationFrame(animateCursor);
     };
 
     const handleMouseMove = (e) => {
       targetX = e.clientX;
       targetY = e.clientY;
+
+      // Update ambient spotlight CSS variables smoothly on cursor move
+      document.documentElement.style.setProperty('--mouse-x', `${Math.round(targetX)}px`);
+      document.documentElement.style.setProperty('--mouse-y', `${Math.round(targetY)}px`);
 
       if (!hasMoved) {
         hasMoved = true;

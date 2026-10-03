@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
 
+const VALID_THEMES = ['night', 'day', 'technical', 'nature', 'minimal', 'aurora', 'monochrome', 'default'];
+
 /**
  * useTheme
- * Simple hook to handle Day / Night theme toggle.
+ * Manages theme selection (Day, Night, and developer presets).
  * Saves preference in localStorage and sets data-theme attribute on <html>.
  */
 export function useTheme() {
   const [theme, setTheme] = useState(() => {
     try {
       const saved = localStorage.getItem('shubham_portfolio_theme');
-      if (saved === 'day' || saved === 'night') {
+      if (saved && VALID_THEMES.includes(saved)) {
         return saved;
       }
     } catch {
@@ -20,8 +22,9 @@ export function useTheme() {
   });
 
   useEffect(() => {
-    // Apply theme to document root element
-    document.documentElement.setAttribute('data-theme', theme);
+    // 'default' theme corresponds to 'night' dark workspace palette in CSS
+    const effectiveTheme = theme === 'default' ? 'night' : theme;
+    document.documentElement.setAttribute('data-theme', effectiveTheme);
     try {
       localStorage.setItem('shubham_portfolio_theme', theme);
     } catch {
@@ -30,7 +33,7 @@ export function useTheme() {
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme((prev) => (prev === 'night' ? 'day' : 'night'));
+    setTheme((prev) => (prev === 'day' ? 'night' : 'day'));
   };
 
   return { theme, toggleTheme, setTheme };

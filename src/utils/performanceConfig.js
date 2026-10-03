@@ -4,6 +4,19 @@
  * Persisted in server/data/site-settings.json (Global) and localStorage (Local Cache).
  */
 
+export const DEFAULT_DEV_PERFORMANCE = {
+  visible: true,
+  showFPS: true,
+  showFrameTime: true,
+  showDPR: true,
+  showMode: true,
+  showDigitalCore: true,
+  showParticles: true,
+  showGlassBlur: true,
+  showScrollFX: true,
+  showViewport: true,
+};
+
 export const DEFAULT_PERFORMANCE_CONFIG = {
   performanceMode: 'BALANCED', // 'EXTREME_SMOOTH' | 'SMOOTH' | 'BALANCED' | 'HIGH_QUALITY' | 'EXTREME_QUALITY' | 'AUTO'
   threeEnabled: true,
@@ -21,6 +34,7 @@ export const DEFAULT_PERFORMANCE_CONFIG = {
   animationQuality: 'MEDIUM', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
   renderScale: 'AUTO', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
   perfMonitorEnabled: false,
+  devPerformance: { ...DEFAULT_DEV_PERFORMANCE },
 };
 
 export const PERFORMANCE_MODES = {

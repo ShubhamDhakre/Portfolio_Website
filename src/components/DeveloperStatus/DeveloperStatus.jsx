@@ -39,7 +39,7 @@ const DEVELOPER_THOUGHTS = [
  */
 function DeveloperStatus() {
   const [now, setNow] = useState(() => new Date());
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
 
   // Initialize random thought avoiding consecutive duplicate in session
   const [thoughtIndex, setThoughtIndex] = useState(() => {

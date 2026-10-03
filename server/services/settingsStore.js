@@ -10,6 +10,19 @@ const SETTINGS_FILE = path.join(DATA_DIR, 'site-settings.json');
 const BACKUP_FILE = path.join(DATA_DIR, 'site-settings.backup.json');
 const TEMP_FILE = path.join(DATA_DIR, 'site-settings.tmp.json');
 
+export const DEFAULT_DEV_PERFORMANCE = {
+  visible: true,
+  showFPS: true,
+  showFrameTime: true,
+  showDPR: true,
+  showMode: true,
+  showDigitalCore: true,
+  showParticles: true,
+  showGlassBlur: true,
+  showScrollFX: true,
+  showViewport: true,
+};
+
 const DEFAULT_GLOBAL = {
   theme: 'default', // 'default' | 'technical' | 'nature' | 'minimal' | 'aurora' | 'monochrome' | 'custom'
   customThemeName: '',
@@ -30,6 +43,7 @@ const DEFAULT_GLOBAL = {
   customCursor: true,
   animationQuality: 'MEDIUM', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
   renderScale: 'AUTO', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
+  devPerformance: { ...DEFAULT_DEV_PERFORMANCE },
 };
 
 const DEFAULT_SETTINGS = {
@@ -141,6 +155,27 @@ export function validateSettingsPayload(payload) {
       }
     }
 
+    // DEV // PERFORMANCE global visibility and row controls
+    if (s.devPerformance !== undefined) {
+      if (typeof s.devPerformance === 'object' && s.devPerformance !== null) {
+        const dp = s.devPerformance;
+        sanitized.global.devPerformance = {
+          visible: dp.visible !== undefined ? Boolean(dp.visible) : true,
+          showFPS: dp.showFPS !== undefined ? Boolean(dp.showFPS) : true,
+          showFrameTime: dp.showFrameTime !== undefined ? Boolean(dp.showFrameTime) : true,
+          showDPR: dp.showDPR !== undefined ? Boolean(dp.showDPR) : true,
+          showMode: dp.showMode !== undefined ? Boolean(dp.showMode) : true,
+          showDigitalCore: dp.showDigitalCore !== undefined ? Boolean(dp.showDigitalCore) : true,
+          showParticles: dp.showParticles !== undefined ? Boolean(dp.showParticles) : true,
+          showGlassBlur: dp.showGlassBlur !== undefined ? Boolean(dp.showGlassBlur) : true,
+          showScrollFX: dp.showScrollFX !== undefined ? Boolean(dp.showScrollFX) : true,
+          showViewport: dp.showViewport !== undefined ? Boolean(dp.showViewport) : true,
+        };
+      } else {
+        errors.push('devPerformance must be an object');
+      }
+    }
+
     // Mirror to settings for backwards compatibility
     sanitized.settings = { ...sanitized.global };
   }
@@ -227,9 +262,14 @@ export function getSiteSettings() {
     }
     const raw = fs.readFileSync(SETTINGS_FILE, 'utf8');
     const parsed = JSON.parse(raw);
+    const existingDevPerf = (parsed.global || parsed.settings || {})?.devPerformance;
     const globalBlock = {
       ...DEFAULT_GLOBAL,
-      ...(parsed.global || parsed.settings || {})
+      ...(parsed.global || parsed.settings || {}),
+      devPerformance: {
+        ...DEFAULT_DEV_PERFORMANCE,
+        ...(existingDevPerf || {})
+      }
     };
     return {
       ...DEFAULT_SETTINGS,
@@ -263,9 +303,16 @@ export function saveSiteSettings(updatedFields, updatedBy = 'admin') {
   const nextVersion = (current.version || 0) + 1;
   const nextUpdatedAt = new Date().toISOString();
 
+  const currentDevPerf = current.global?.devPerformance || DEFAULT_DEV_PERFORMANCE;
+  const incomingDevPerf = updatedFields.global?.devPerformance || updatedFields.settings?.devPerformance;
+  const mergedDevPerf = incomingDevPerf !== undefined
+    ? { ...currentDevPerf, ...incomingDevPerf }
+    : currentDevPerf;
+
   const mergedGlobal = {
     ...current.global,
-    ...(updatedFields.global || updatedFields.settings || {})
+    ...(updatedFields.global || updatedFields.settings || {}),
+    devPerformance: mergedDevPerf
   };
 
   const newDoc = {

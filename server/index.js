@@ -59,7 +59,7 @@ app.get('{*path}', (req, res, next) => {
 });
 
 // Global Error Handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('[SERVER ERROR]', err.message);
   res.status(err.status || 500).json({
     error: 'System encountered an internal error.',

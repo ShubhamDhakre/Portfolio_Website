@@ -689,16 +689,39 @@
 
 @media (max-width: 640px) {
   .skills-section {
-    padding: 90px 16px 60px;
+    padding: clamp(60px, 8vh, 80px) clamp(14px, 4vw, 20px);
   }
   .network-viewport {
-    height: 380px;
+    height: clamp(300px, 45vh, 380px);
   }
   .skill-inspection-panel {
     padding: 16px 18px;
   }
   .skills-cards-grid {
     grid-template-columns: 1fr;
+  }
+  .skill-network-container {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 359px) {
+  .skills-section {
+    padding: 60px 12px 40px;
+  }
+  .network-viewport {
+    height: 280px;
+  }
+  .skill-node .node-label {
+    font-size: 9px;
+    padding: 2px 5px;
+  }
+  .skill-card {
+    padding: 14px 12px;
+  }
+  .filter-chip {
+    padding: 4px 9px;
+    font-size: 10px;
   }
 }
 

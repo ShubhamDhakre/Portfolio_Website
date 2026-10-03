@@ -1,19 +1,24 @@
 import React, { useState, useEffect, memo } from 'react';
 import './PerformanceMonitorHUD.css';
 
+import { DEFAULT_DEV_PERFORMANCE } from '../../utils/performanceConfig';
+
 /**
  * PerformanceMonitorHUD
  * Developer-only floating telemetry HUD.
- * Renders only when perfMonitorEnabled or debugMode is active.
+ * Renders based on global.devPerformance.visible (or local preview override).
  * Calculates live FPS, frame times, device DPR, quality levels & viewport.
+ * Individual rows are conditionally rendered based on global/local devPerformance settings.
  */
-function PerformanceMonitorHUD({ perfSettings = {}, onClose }) {
+function PerformanceMonitorHUD({ perfSettings = {}, devPerformance, onClose }) {
   const [fps, setFps] = useState(60);
   const [frameTime, setFrameTime] = useState(16.6);
   const [viewport, setViewport] = useState({
     w: typeof window !== 'undefined' ? window.innerWidth : 0,
     h: typeof window !== 'undefined' ? window.innerHeight : 0,
   });
+
+  const devPerfConfig = devPerformance || perfSettings.devPerformance || DEFAULT_DEV_PERFORMANCE;
 
   useEffect(() => {
     let frameCount = 0;
@@ -48,6 +53,10 @@ function PerformanceMonitorHUD({ perfSettings = {}, onClose }) {
     };
   }, []);
 
+  if (devPerfConfig.visible === false) {
+    return null;
+  }
+
   const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1).toFixed(1) : '1.0';
 
   const fpsClass = fps >= 50 ? 'perf-fps-good' : fps >= 30 ? 'perf-fps-med' : 'perf-fps-low';
@@ -69,60 +78,78 @@ function PerformanceMonitorHUD({ perfSettings = {}, onClose }) {
         )}
       </div>
 
-      <div className="perf-hud-row">
-        <span className="perf-hud-key">FPS</span>
-        <span className={`perf-hud-val perf-fps-badge ${fpsClass}`}>{fps} FPS</span>
-      </div>
+      {devPerfConfig.showFPS !== false && (
+        <div className="perf-hud-row">
+          <span className="perf-hud-key">FPS</span>
+          <span className={`perf-hud-val perf-fps-badge ${fpsClass}`}>{fps} FPS</span>
+        </div>
+      )}
 
-      <div className="perf-hud-row">
-        <span className="perf-hud-key">FRAME TIME</span>
-        <span className="perf-hud-val">{frameTime} ms</span>
-      </div>
+      {devPerfConfig.showFrameTime !== false && (
+        <div className="perf-hud-row">
+          <span className="perf-hud-key">FRAME TIME</span>
+          <span className="perf-hud-val">{frameTime} ms</span>
+        </div>
+      )}
 
-      <div className="perf-hud-row">
-        <span className="perf-hud-key">DEVICE DPR</span>
-        <span className="perf-hud-val">{dpr}x</span>
-      </div>
+      {devPerfConfig.showDPR !== false && (
+        <div className="perf-hud-row">
+          <span className="perf-hud-key">DEVICE DPR</span>
+          <span className="perf-hud-val">{dpr}x</span>
+        </div>
+      )}
 
-      <div className="perf-hud-row">
-        <span className="perf-hud-key">MODE</span>
-        <span className="perf-hud-val" style={{ color: 'var(--accent-highlight)' }}>
-          {perfSettings.perfMode || 'AUTO'}
-        </span>
-      </div>
+      {devPerfConfig.showMode !== false && (
+        <div className="perf-hud-row">
+          <span className="perf-hud-key">MODE</span>
+          <span className="perf-hud-val" style={{ color: 'var(--accent-highlight)' }}>
+            {perfSettings.performanceMode || perfSettings.perfMode || 'AUTO'}
+          </span>
+        </div>
+      )}
 
-      <div className="perf-hud-row">
-        <span className="perf-hud-key">3D DIGITAL CORE</span>
-        <span className="perf-hud-val" style={{ color: perfSettings.threeEnabled !== false ? '#10b981' : '#ef4444' }}>
-          {perfSettings.threeEnabled !== false ? 'ONLINE' : 'STANDBY'}
-        </span>
-      </div>
+      {devPerfConfig.showDigitalCore !== false && (
+        <div className="perf-hud-row">
+          <span className="perf-hud-key">3D DIGITAL CORE</span>
+          <span className="perf-hud-val" style={{ color: perfSettings.threeEnabled !== false ? '#10b981' : '#ef4444' }}>
+            {perfSettings.threeEnabled !== false ? 'ONLINE' : 'STANDBY'}
+          </span>
+        </div>
+      )}
 
-      <div className="perf-hud-row">
-        <span className="perf-hud-key">PARTICLES</span>
-        <span className="perf-hud-val">
-          {perfSettings.particlesEnabled !== false ? (perfSettings.particleQuality || 'AUTO') : 'OFF'}
-        </span>
-      </div>
+      {devPerfConfig.showParticles !== false && (
+        <div className="perf-hud-row">
+          <span className="perf-hud-key">PARTICLES</span>
+          <span className="perf-hud-val">
+            {perfSettings.particlesEnabled !== false ? (perfSettings.particleQuality || 'AUTO') : 'OFF'}
+          </span>
+        </div>
+      )}
 
-      <div className="perf-hud-row">
-        <span className="perf-hud-key">GLASS BLUR</span>
-        <span className="perf-hud-val">
-          {perfSettings.glassEnabled !== false ? (perfSettings.glassQuality || 'AUTO') : 'FLAT'}
-        </span>
-      </div>
+      {devPerfConfig.showGlassBlur !== false && (
+        <div className="perf-hud-row">
+          <span className="perf-hud-key">GLASS BLUR</span>
+          <span className="perf-hud-val">
+            {perfSettings.glassEnabled !== false ? (perfSettings.glassQuality || 'AUTO') : 'FLAT'}
+          </span>
+        </div>
+      )}
 
-      <div className="perf-hud-row">
-        <span className="perf-hud-key">SCROLL FX</span>
-        <span className="perf-hud-val">
-          {perfSettings.scrollEffectsEnabled !== false ? 'ON' : 'OFF'}
-        </span>
-      </div>
+      {devPerfConfig.showScrollFX !== false && (
+        <div className="perf-hud-row">
+          <span className="perf-hud-key">SCROLL FX</span>
+          <span className="perf-hud-val">
+            {perfSettings.scrollEffectsEnabled !== false ? 'ON' : 'OFF'}
+          </span>
+        </div>
+      )}
 
-      <div className="perf-hud-row">
-        <span className="perf-hud-key">VIEWPORT</span>
-        <span className="perf-hud-val">{viewport.w} × {viewport.h}</span>
-      </div>
+      {devPerfConfig.showViewport !== false && (
+        <div className="perf-hud-row">
+          <span className="perf-hud-key">VIEWPORT</span>
+          <span className="perf-hud-val">{viewport.w} × {viewport.h}</span>
+        </div>
+      )}
     </aside>
   );
 }

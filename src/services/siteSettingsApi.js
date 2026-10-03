@@ -34,25 +34,21 @@ export async function checkAdminSession() {
 }
 
 export async function loginAdmin(password) {
-  try {
-    const res = await fetch('/api/admin/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      credentials: 'include',
-      body: JSON.stringify({ password }),
-    });
+  const res = await fetch('/api/admin/login', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    },
+    credentials: 'include',
+    body: JSON.stringify({ password }),
+  });
 
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.message || data.error || 'Invalid credentials.');
-    }
-    return data;
-  } catch (err) {
-    throw err;
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.message || data.error || 'Invalid credentials.');
   }
+  return data;
 }
 
 export async function logoutAdmin() {

@@ -98,7 +98,9 @@ function WebSystemBackground({
 
     // Determine particle count based on quality
     let densityScale = 1;
-    if (backgroundQuality === 'HIGH') densityScale = 1.35;
+    if (customBackgroundConfig?.density === 'HIGH') densityScale = 1.35;
+    else if (customBackgroundConfig?.density === 'LOW') densityScale = 0.5;
+    else if (backgroundQuality === 'HIGH') densityScale = 1.35;
     else if (backgroundQuality === 'MEDIUM') densityScale = 0.9;
     else if (backgroundQuality === 'LOW') densityScale = 0.5;
 
@@ -397,7 +399,7 @@ function WebSystemBackground({
       cancelAnimationFrame(animationFrameId);
       if (resizeTimer) cancelAnimationFrame(resizeTimer);
     };
-  }, [theme, effectiveBgType, backgroundEnabled, backgroundQuality, mouseEffectsEnabled]);
+  }, [theme, effectiveBgType, backgroundEnabled, backgroundQuality, mouseEffectsEnabled, customBackgroundConfig]);
 
   if (!backgroundEnabled) {
     return null;

@@ -52,13 +52,7 @@ function ThreeScene({
     onUnlockRef.current = onUnlockPrivateLayer;
   }, [onUnlockPrivateLayer]);
 
-  useEffect(() => {
-    if (isPrivateModeActive) {
-      setCoreState('PRIVATE');
-    } else if (coreState === 'PRIVATE') {
-      setCoreState('READY');
-    }
-  }, [isPrivateModeActive]);
+
 
   useEffect(() => {
     const container = mountRef.current;
@@ -66,6 +60,7 @@ function ThreeScene({
 
     let width = container.clientWidth || window.innerWidth;
     let height = container.clientHeight || 480;
+    const isSmallPhone = window.innerWidth < 400;
     const isMobile = window.innerWidth < 768;
     const isTablet = window.innerWidth >= 768 && window.innerWidth < 960;
 
@@ -73,7 +68,7 @@ function ThreeScene({
     const scene = new THREE.Scene();
 
     // Calibrated FOV & Camera Z to guarantee 0% clipping on orbital rings
-    const cameraZ = isMobile ? 6.8 : isTablet ? 6.6 : 6.4;
+    const cameraZ = isSmallPhone ? 7.2 : isMobile ? 6.8 : isTablet ? 6.6 : 6.4;
     const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 100);
     camera.position.z = cameraZ;
 
@@ -95,17 +90,43 @@ function ThreeScene({
 
     // 3. Digital Core Group
     const coreGroup = new THREE.Group();
-    if (isMobile) {
-      coreGroup.scale.set(0.85, 0.85, 0.85);
-    }
+    const initialBaseScale = isSmallPhone ? 0.72 : (isMobile ? 0.82 : 1.0);
+    coreGroup.scale.set(initialBaseScale, initialBaseScale, initialBaseScale);
     scene.add(coreGroup);
     coreGroupRef.current = coreGroup;
 
     // Theme-based colors
-    const isNight = theme === 'night';
-    const primaryColor = isNight ? 0x6D5BA6 : 0x5C4A94;
-    const secondaryColor = isNight ? 0x4A416B : 0x4A416B;
-    const highlightColor = isNight ? 0x8B7BB8 : 0x7A68AD;
+    const isDay = theme === 'day';
+    const isNight = !isDay;
+    let primaryColor = 0x6D5BA6;
+    let secondaryColor = 0x4A416B;
+    let highlightColor = 0x8B7BB8;
+
+    if (isDay) {
+      primaryColor = 0x5C4A94;
+      secondaryColor = 0x4A416B;
+      highlightColor = 0x7A68AD;
+    } else if (theme === 'technical') {
+      primaryColor = 0x0284C7;
+      secondaryColor = 0x0369A1;
+      highlightColor = 0x38BDF8;
+    } else if (theme === 'nature') {
+      primaryColor = 0x2D6A4F;
+      secondaryColor = 0x1B4332;
+      highlightColor = 0x74C69D;
+    } else if (theme === 'minimal') {
+      primaryColor = 0x64748B;
+      secondaryColor = 0x475569;
+      highlightColor = 0xCBD5E1;
+    } else if (theme === 'aurora') {
+      primaryColor = 0x0D9488;
+      secondaryColor = 0x115E59;
+      highlightColor = 0xC084FC;
+    } else if (theme === 'monochrome') {
+      primaryColor = 0xA0A0A0;
+      secondaryColor = 0x606060;
+      highlightColor = 0xF0F0F0;
+    }
 
     const materials = [];
 
@@ -281,12 +302,13 @@ function ThreeScene({
         const newHeight = container.clientHeight;
         if (newWidth === 0 || newHeight === 0) return;
 
+        const newIsSmallPhone = window.innerWidth < 400;
         const newIsMobile = window.innerWidth < 768;
         const newIsTablet = window.innerWidth >= 768 && window.innerWidth < 960;
-        camera.position.z = newIsMobile ? 6.8 : newIsTablet ? 6.6 : 6.4;
+        camera.position.z = newIsSmallPhone ? 7.2 : (newIsMobile ? 6.8 : newIsTablet ? 6.6 : 6.4);
 
         if (coreGroupRef.current) {
-          const base = newIsMobile ? 0.85 : 1.0;
+          const base = newIsSmallPhone ? 0.72 : (newIsMobile ? 0.82 : 1.0);
           coreGroupRef.current.scale.set(base, base, base);
         }
 
@@ -372,7 +394,8 @@ function ThreeScene({
       const targetScale = isHovered ? (excitation > 1.1 ? 1.08 : 1.04) : 1.0;
       currentScaleMultiplier += (targetScale - currentScaleMultiplier) * 0.08;
 
-      const baseScale = isMobile ? 0.85 : 1.0;
+      const isSmallPhone = typeof window !== 'undefined' && window.innerWidth < 400;
+      const baseScale = isSmallPhone ? 0.72 : (isMobile ? 0.82 : 1.0);
       coreGroup.scale.set(
         baseScale * currentScaleMultiplier,
         baseScale * currentScaleMultiplier,
@@ -527,11 +550,13 @@ function ThreeScene({
     }
   }, [scrollProgress, scrollEffectsEnabled]);
 
+  const activeCoreState = isPrivateModeActive ? 'PRIVATE' : coreState;
+
   return (
     <div
       ref={mountRef}
-      className={`three-scene-container core-state-${coreState.toLowerCase().replace(/\s+/g, '-')}`}
-      data-cursor={coreState === 'EXPLORING' ? 'EXPLORE' : 'INTERACT'}
+      className={`three-scene-container core-state-${activeCoreState.toLowerCase().replace(/\s+/g, '-')}`}
+      data-cursor={activeCoreState === 'EXPLORING' ? 'EXPLORE' : 'INTERACT'}
       title="Click to explore Digital Core system (Shift+Click for developer workspace)"
       aria-label="Interactive 3D Digital Core"
       onTouchStart={handleTouchStart}
@@ -539,13 +564,6 @@ function ThreeScene({
       onTouchEnd={cancelTouchHold}
       onTouchCancel={cancelTouchHold}
     >
-      {/* Interactive Core State Badge */}
-      <div className="core-state-indicator" aria-live="polite">
-        <span className={`core-state-dot ${!threeEnabled ? 'dot-standby' : `dot-${coreState.toLowerCase().replace(/\s+/g, '-')}`}`} />
-        <span className="core-state-label">
-          CORE.STATUS = {!threeEnabled ? 'STANDBY (BENCHMARK MODE)' : coreState}
-        </span>
-      </div>
 
       {/* Mobile Long Press Feedback Pill */}
       {touchHolding && (
