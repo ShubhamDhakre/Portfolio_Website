@@ -17,7 +17,7 @@ function Contact() {
   }, []);
 
   const contactInfo = {
-    email: "shubhamdhakre.dev@gmail.com", // Placeholder: replace with your actual email
+    email: "ssdhakre93@gmail.com", // Placeholder: replace with your actual email
     github: "https://github.com/shubhamdhakre",
     linkedin: "https://linkedin.com/in/shubhamdhakre",
   };
