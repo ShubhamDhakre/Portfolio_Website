@@ -34,21 +34,45 @@ export async function checkAdminSession() {
 }
 
 export async function loginAdmin(password) {
-  const res = await fetch('/api/admin/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-    },
-    credentials: 'include',
-    body: JSON.stringify({ password }),
-  });
+  try {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      credentials: 'include',
+      body: JSON.stringify({ password }),
+    });
 
-  const data = await res.json();
-  if (!res.ok) {
-    throw new Error(data.message || data.error || 'Invalid credentials.');
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+
+    if (!res.ok) {
+      let errorMsg = 'Invalid password. Please try again.';
+      if (typeof data?.message === 'string' && data.message.trim()) {
+        errorMsg = data.message;
+      } else if (typeof data?.error === 'string' && data.error.trim()) {
+        errorMsg = data.error;
+      } else if (res.status === 429) {
+        errorMsg = 'Too many login attempts. Please wait a few minutes before retrying.';
+      } else if (res.status === 401) {
+        errorMsg = 'Invalid password. Please try again.';
+      }
+      throw new Error(errorMsg);
+    }
+    return data;
+  } catch (err) {
+    const fallback =
+      typeof err?.message === 'string' && err.message && err.message !== '[object Object]'
+        ? err.message
+        : 'Invalid password. Please try again.';
+    throw new Error(fallback);
   }
-  return data;
 }
 
 export async function logoutAdmin() {

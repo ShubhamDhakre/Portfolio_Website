@@ -428,7 +428,11 @@ export default function PrivateControlLayer({
         }
       }
     } catch (err) {
-      setLoginError(err.message || 'Invalid credentials.');
+      const msg =
+        typeof err?.message === 'string' && err.message && err.message !== '[object Object]'
+          ? err.message
+          : 'Invalid password. Please try again.';
+      setLoginError(msg);
       logInteraction('Admin authentication failed');
     } finally {
       setLoginLoading(false);
@@ -1533,7 +1537,7 @@ export default function PrivateControlLayer({
                         <span className="auth-lock-icon">🔒</span>
                         <h3>SHUBHAM-CORE AUTHENTICATION</h3>
                         <p className="auth-desc">
-                          Enter developer password to access global performance controls and website configuration. (Default: <code>admin123</code>)
+                          Enter developer password to access global performance controls and website configuration.
                         </p>
                       </div>
 
@@ -1566,7 +1570,11 @@ export default function PrivateControlLayer({
                         {loginError && (
                           <div className="auth-error-banner" role="alert">
                             <span className="error-icon">✕</span>
-                            <span>{loginError}</span>
+                            <span>
+                              {typeof loginError === 'string' && loginError !== '[object Object]'
+                                ? loginError
+                                : 'Invalid password. Please try again.'}
+                            </span>
                           </div>
                         )}
 

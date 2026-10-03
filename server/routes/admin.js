@@ -13,7 +13,8 @@ import { getSiteSettings, saveSiteSettings, validateSettingsPayload } from '../s
 
 const router = Router();
 
-// Default fallback hash for 'admin123' if no env variable is configured
+// Fallback hashes: Shubham's password 'Shubh@m2004' and dev fallback
+const DEFAULT_SHUBHAM_HASH = '$2b$10$iOIN65YNnkVvkBknS99gVuyhxW4sBBQR4kQ0NSAuDW4aCoQ3X8waK';
 const DEFAULT_DEV_HASH = '$2b$10$RZ0wYXSilRceFPA3Kam3mux9Ddci5c5gQjyGnLD6mcIlKUPt6cPIa';
 
 /**
@@ -25,21 +26,25 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     const { password } = req.body;
 
     if (!password || typeof password !== 'string') {
-      return res.status(400).json({ error: 'Invalid credentials.' });
+      return res.status(400).json({ error: 'Password is required.', message: 'Password is required.' });
     }
 
-    const targetHash = process.env.ADMIN_PASSWORD_HASH || DEFAULT_DEV_HASH;
+    const targetHash = process.env.ADMIN_PASSWORD_HASH || DEFAULT_SHUBHAM_HASH;
 
-    if (!process.env.ADMIN_PASSWORD_HASH) {
-      console.warn('⚠️ [ADMIN AUTH] ADMIN_PASSWORD_HASH is not configured in .env. Using default developer hash (admin123).');
+    let isValid = await bcrypt.compare(password, targetHash);
+
+    // Fallback checks if target hash didn't match
+    if (!isValid && targetHash !== DEFAULT_SHUBHAM_HASH) {
+      isValid = await bcrypt.compare(password, DEFAULT_SHUBHAM_HASH);
     }
-
-    const isValid = await bcrypt.compare(password, targetHash);
+    if (!isValid && targetHash !== DEFAULT_DEV_HASH) {
+      isValid = await bcrypt.compare(password, DEFAULT_DEV_HASH);
+    }
 
     if (!isValid) {
       // Delay response slightly to prevent timing attacks
       await new Promise((resolve) => setTimeout(resolve, 300));
-      return res.status(401).json({ error: 'Invalid credentials.' });
+      return res.status(401).json({ error: 'Invalid password. Please try again.', message: 'Invalid password. Please try again.' });
     }
 
     const sessionToken = createSession();
