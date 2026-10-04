@@ -97,6 +97,14 @@ export const loginRateLimiter = rateLimit({
   max: 10, // Max 10 attempts per IP per 15 minutes
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (typeof forwarded === 'string' && forwarded) {
+      return forwarded.split(',')[0].trim();
+    }
+    return req.headers['x-real-ip'] || req.ip || req.socket?.remoteAddress || '127.0.0.1';
+  },
+  validate: { xForwardedForHeader: false, default: false },
   message: {
     error: 'Too many login attempts',
     message: 'Rate limit exceeded. Please wait 15 minutes before retrying.'

@@ -53,15 +53,19 @@ export async function loginAdmin(password) {
     }
 
     if (!res.ok) {
-      let errorMsg = 'Invalid password. Please try again.';
+      let errorMsg = 'Authentication failed. Please try again.';
       if (typeof data?.message === 'string' && data.message.trim()) {
         errorMsg = data.message;
       } else if (typeof data?.error === 'string' && data.error.trim()) {
         errorMsg = data.error;
-      } else if (res.status === 429) {
-        errorMsg = 'Too many login attempts. Please wait a few minutes before retrying.';
       } else if (res.status === 401) {
         errorMsg = 'Invalid password. Please try again.';
+      } else if (res.status === 404) {
+        errorMsg = 'API route not found (404). Please ensure backend serverless functions are configured on Vercel.';
+      } else if (res.status === 429) {
+        errorMsg = 'Too many login attempts. Please wait 15 minutes before retrying.';
+      } else if (res.status >= 500) {
+        errorMsg = `Server error (${res.status}). Please check Vercel function logs.`;
       }
       throw new Error(errorMsg);
     }
@@ -70,7 +74,7 @@ export async function loginAdmin(password) {
     const fallback =
       typeof err?.message === 'string' && err.message && err.message !== '[object Object]'
         ? err.message
-        : 'Invalid password. Please try again.';
+        : 'Could not connect to authentication server.';
     throw new Error(fallback);
   }
 }

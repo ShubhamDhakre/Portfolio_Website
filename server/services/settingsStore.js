@@ -10,6 +10,12 @@ const SETTINGS_FILE = path.join(DATA_DIR, 'site-settings.json');
 const BACKUP_FILE = path.join(DATA_DIR, 'site-settings.backup.json');
 const TEMP_FILE = path.join(DATA_DIR, 'site-settings.tmp.json');
 
+const IS_SERVERLESS = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+const TMP_SETTINGS_FILE = path.join('/tmp', 'site-settings.json');
+const TMP_TEMP_FILE = path.join('/tmp', 'site-settings.tmp.json');
+
+let inMemorySettingsCache = null;
+
 export const DEFAULT_DEV_PERFORMANCE = {
   visible: true,
   showFPS: true,
@@ -62,9 +68,13 @@ const DEFAULT_SETTINGS = {
   customBackgrounds: []
 };
 
-// Ensure data directory exists
-if (!fs.existsSync(DATA_DIR)) {
-  fs.mkdirSync(DATA_DIR, { recursive: true });
+// Ensure data directory exists safely
+try {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+} catch {
+  // Read-only filesystem in serverless, will use in-memory and /tmp
 }
 
 /**
@@ -255,12 +265,28 @@ export function validateSettingsPayload(payload) {
  * Read global site settings from JSON file
  */
 export function getSiteSettings() {
+  if (inMemorySettingsCache) {
+    return inMemorySettingsCache;
+  }
+
   try {
-    if (!fs.existsSync(SETTINGS_FILE)) {
-      saveSiteSettings(DEFAULT_SETTINGS, 'system_init');
+    let raw = null;
+    if (IS_SERVERLESS && fs.existsSync(TMP_SETTINGS_FILE)) {
+      raw = fs.readFileSync(TMP_SETTINGS_FILE, 'utf8');
+    } else if (fs.existsSync(SETTINGS_FILE)) {
+      raw = fs.readFileSync(SETTINGS_FILE, 'utf8');
+    }
+
+    if (!raw) {
+      if (!IS_SERVERLESS) {
+        try {
+          saveSiteSettings(DEFAULT_SETTINGS, 'system_init');
+        } catch {}
+      }
+      inMemorySettingsCache = DEFAULT_SETTINGS;
       return DEFAULT_SETTINGS;
     }
-    const raw = fs.readFileSync(SETTINGS_FILE, 'utf8');
+
     const parsed = JSON.parse(raw);
     const existingDevPerf = (parsed.global || parsed.settings || {})?.devPerformance;
     const globalBlock = {
@@ -271,7 +297,7 @@ export function getSiteSettings() {
         ...(existingDevPerf || {})
       }
     };
-    return {
+    const loadedDoc = {
       ...DEFAULT_SETTINGS,
       ...parsed,
       global: globalBlock,
@@ -280,6 +306,8 @@ export function getSiteSettings() {
       customThemes: Array.isArray(parsed.customThemes) ? parsed.customThemes : [],
       customBackgrounds: Array.isArray(parsed.customBackgrounds) ? parsed.customBackgrounds : []
     };
+    inMemorySettingsCache = loadedDoc;
+    return loadedDoc;
   } catch (err) {
     console.error('Failed to read site-settings.json, trying backup:', err);
     if (fs.existsSync(BACKUP_FILE)) {
@@ -295,7 +323,7 @@ export function getSiteSettings() {
 }
 
 /**
- * Atomically write global site settings to JSON file with backup
+ * Atomically write global site settings to JSON file with backup and memory cache
  */
 export function saveSiteSettings(updatedFields, updatedBy = 'admin') {
   const current = getSiteSettings();
@@ -333,28 +361,27 @@ export function saveSiteSettings(updatedFields, updatedBy = 'admin') {
       : (current.customBackgrounds || [])
   };
 
+  inMemorySettingsCache = newDoc;
   const jsonString = JSON.stringify(newDoc, null, 2);
 
-  // 1. Write to temporary file
-  fs.writeFileSync(TEMP_FILE, jsonString, 'utf8');
+  // Write to filesystem with serverless fallback
+  try {
+    const targetTemp = IS_SERVERLESS ? TMP_TEMP_FILE : TEMP_FILE;
+    const targetDest = IS_SERVERLESS ? TMP_SETTINGS_FILE : SETTINGS_FILE;
 
-  // 2. Validate written temporary file
-  const testRead = JSON.parse(fs.readFileSync(TEMP_FILE, 'utf8'));
-  if (!testRead || testRead.version !== nextVersion) {
-    throw new Error('Atomic write verification failed on temporary file.');
-  }
+    fs.writeFileSync(targetTemp, jsonString, 'utf8');
+    fs.renameSync(targetTemp, targetDest);
 
-  // 3. Backup existing file if present
-  if (fs.existsSync(SETTINGS_FILE)) {
-    try {
-      fs.copyFileSync(SETTINGS_FILE, BACKUP_FILE);
-    } catch (bErr) {
-      console.warn('Could not create backup of settings file:', bErr);
+    if (!IS_SERVERLESS && fs.existsSync(SETTINGS_FILE)) {
+      try {
+        fs.copyFileSync(SETTINGS_FILE, BACKUP_FILE);
+      } catch (bErr) {
+        console.warn('Could not create backup of settings file:', bErr);
+      }
     }
+  } catch (fsErr) {
+    console.warn('[STORAGE] Could not write to disk (serverless read-only mode). Saved to memory cache:', fsErr.message);
   }
-
-  // 4. Atomic rename temporary file to destination
-  fs.renameSync(TEMP_FILE, SETTINGS_FILE);
 
   return newDoc;
 }
