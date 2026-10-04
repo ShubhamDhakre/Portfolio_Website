@@ -112,7 +112,72 @@ const mockKVServer = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ result: existed ? 1 : 0 }));
       } else if (action === 'EVAL') {
-        // command: ['EVAL', script, 1, key, expectedToken]
+        const script = command[1];
+        const numKeys = Number(command[2]);
+
+        // Case A: RENEW_LEASE_LUA: ['EVAL', script, 1, lockKey, lockToken, ttlSeconds]
+        if (script && script.includes('expire') && !script.includes('del')) {
+          const lockKey = command[3];
+          const lockToken = command[4];
+          const currentVal = kvStorage.has(lockKey) ? kvStorage.get(lockKey) : null;
+          if (currentVal !== null && String(currentVal) === String(lockToken)) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 1 }));
+          } else {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 0 }));
+          }
+          return;
+        }
+
+        // Case B: ATOMIC_COMMIT_SETTINGS_LUA: ['EVAL', script, 2, settingsKey, lockKey, serializedDoc, lockToken, baseVersion]
+        if (numKeys === 2) {
+          const settingsKey = command[3];
+          const lockKey = command[4];
+          const serializedDoc = command[5];
+          const lockToken = command[6];
+          const baseVersion = command[7];
+
+          // Check lock ownership
+          const currentLock = kvStorage.has(lockKey) ? kvStorage.get(lockKey) : null;
+          if (lockKey && lockToken && currentLock !== lockToken) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'LOCK_LOST' }));
+            return;
+          }
+
+          // Check baseVersion
+          const currentVal = kvStorage.has(settingsKey) ? kvStorage.get(settingsKey) : null;
+          if (currentVal && baseVersion !== undefined && baseVersion !== null && baseVersion !== '') {
+            let currentVer = null;
+            if (typeof currentVal === 'object' && currentVal !== null) {
+              currentVer = currentVal.version;
+            } else if (typeof currentVal === 'string') {
+              try {
+                currentVer = JSON.parse(currentVal).version;
+              } catch {
+                const match = currentVal.match(/"version"\s*:\s*(\d+)/);
+                if (match) currentVer = Number(match[1]);
+              }
+            }
+            if (currentVer !== null && Number(currentVer) !== Number(baseVersion)) {
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ result: 'VERSION_CONFLICT' }));
+              return;
+            }
+          }
+
+          let toStore = serializedDoc;
+          if (typeof serializedDoc === 'string') {
+            try { toStore = JSON.parse(serializedDoc); } catch {}
+          }
+          kvStorage.set(settingsKey, toStore);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ result: 'OK' }));
+          return;
+        }
+
+        // Case C: COMPARE_AND_DELETE_LUA: ['EVAL', script, 1, key, expectedToken]
         const key = command[3];
         const expectedToken = command[4];
         const currentVal = kvStorage.has(key) ? kvStorage.get(key) : null;
@@ -420,8 +485,131 @@ mockKVServer.listen(0, '127.0.0.1', async () => {
       mockServerMode = 'normal';
       console.log('    ✓ Lock contention returns 409 and KV errors return 503 without false success reports');
 
+      // =======================================================================
+      // PART 3: SETTINGS PERSISTENCE, LEASE RENEWAL & CONCURRENCY FENCING
+      // =======================================================================
+      console.log('\n--- Section 3: Settings Persistence & Concurrency Fencing Tests ---');
+
+      // Test 3.1: An update that lasts longer than the original lock TTL (Safe Lease Renewal)
+      console.log('\n  [Test 3.1] Safe lease renewal prevents premature lock expiration for long updates');
+      const longLockKey = 'lock:long_operation_test';
+      const longOpToken = await kvStore.acquireLock(longLockKey, 2); // 2s TTL
+      assert.ok(longOpToken, 'Must acquire lock with 2s TTL');
+
+      // Start lease renewal heartbeat with 600ms interval
+      const leaseHandle = kvStore.createLockLease(longLockKey, longOpToken, 2, 600);
+
+      // Simulate long operation lasting 2.5s (longer than initial 2s TTL)
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+
+      // Lock must STILL be owned by longOpToken thanks to lease renewal
+      assert.strictEqual(kvStorage.get(longLockKey), longOpToken, 'Lock must still be held after 2.5s due to active lease renewal');
+      assert.strictEqual(leaseHandle.isLost(), false, 'Lease must not be marked lost');
+
+      leaseHandle.stop();
+      await kvStore.releaseLock(longLockKey, longOpToken);
+      assert.strictEqual(kvStorage.has(longLockKey), false, 'Lock released cleanly after long update');
+      console.log('    ✓ Lock lease automatically renewed during long operation (>2s TTL) and released cleanly');
+
+      // Test 3.2: Writer cannot continue committing after losing its lock ownership (Fencing)
+      console.log('\n  [Test 3.2] Writer cannot commit after losing lock ownership (Fencing check)');
+      const fencedLockKey = 'lock:site_settings';
+      const originalToken = await kvStore.acquireLock(fencedLockKey, 4);
+
+      // Simulate lock being stolen or re-acquired by another instance after timeout
+      kvStorage.set(fencedLockKey, 'new_stolen_token_xyz_999');
+
+      let lockLostThrown = false;
+      try {
+        await kvStore.commitSettingsAtomic('site_settings', fencedLockKey, { version: 99 }, originalToken, 98);
+      } catch (err) {
+        lockLostThrown = true;
+        assert.strictEqual(err.code, 'LOCK_LOST', 'Must throw LOCK_LOST error code');
+        assert.strictEqual(err.status, 409, 'Must return status 409');
+      }
+      assert.strictEqual(lockLostThrown, true, 'Writer must be blocked from committing when lock ownership is lost');
+      // Clean up stolen lock
+      kvStorage.delete(fencedLockKey);
+      console.log('    ✓ Commit rejected with 409 LOCK_LOST when writer lost lock ownership');
+
+      // Test 3.3: Authoritative read overrides stale in-memory cache
+      console.log('\n  [Test 3.3] Authoritative KV read overrides stale in-memory cache');
+      // Seed remote KV with a newer version created by another serverless container
+      const remoteNewerDoc = {
+        version: 15,
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'remote_instance_X',
+        global: { theme: 'monochrome' }
+      };
+      kvStorage.set('site_settings', remoteNewerDoc);
+
+      // Saving must read the authoritative version 15 from KV (bypassing local cache) and increment to 16
+      const savedDoc = await saveSiteSettings({ global: { performanceMode: 'EXTREME_QUALITY' } }, 'local_admin');
+      assert.strictEqual(savedDoc.version, 16, 'Saved version must be 16 based on authoritative KV version 15');
+      assert.strictEqual(savedDoc.global.theme, 'monochrome', 'Preserved fields from authoritative remote document');
+
+      // If client provides an outdated expectedVersion, it must be rejected with 409 VERSION_CONFLICT
+      let conflictThrown = false;
+      try {
+        await saveSiteSettings({ global: { theme: 'aurora' }, expectedVersion: 14 }, 'stale_client');
+      } catch (err) {
+        conflictThrown = true;
+        assert.strictEqual(err.code, 'VERSION_CONFLICT');
+        assert.strictEqual(err.status, 409);
+      }
+      assert.strictEqual(conflictThrown, true, 'Stale expectedVersion must be rejected with 409 Conflict');
+      console.log('    ✓ Forced authoritative read bypassed stale cache and rejected outdated expectedVersion');
+
+      // Test 3.4: Two concurrent instances cannot overwrite each other's versions (Atomic CAS)
+      console.log('\n  [Test 3.4] Two concurrent instances cannot race version check and persistence');
+      // Current version in KV is 16
+      const currentDocInKV = kvStorage.get('site_settings');
+      const baseVer = currentDocInKV.version; // 16
+
+      // Simulate Instance B committed version 17 while Instance A was preparing its payload based on 16
+      const instanceBDoc = { ...currentDocInKV, version: baseVer + 1, global: { theme: 'nature' } };
+      kvStorage.set('site_settings', instanceBDoc);
+
+      // Now Instance A tries to commit with baseVersion 16 using its own lock
+      const instanceALockToken = await kvStore.acquireLock('lock:site_settings', 4);
+      let raceConflictThrown = false;
+      try {
+        const instanceADoc = { ...currentDocInKV, version: baseVer + 1, global: { theme: 'minimal' } };
+        await kvStore.commitSettingsAtomic('site_settings', 'lock:site_settings', instanceADoc, instanceALockToken, baseVer);
+      } catch (err) {
+        raceConflictThrown = true;
+        assert.strictEqual(err.code, 'VERSION_CONFLICT', 'Must detect version conflict in shared KV atomic write');
+      } finally {
+        await kvStore.releaseLock('lock:site_settings', instanceALockToken);
+      }
+      assert.strictEqual(raceConflictThrown, true, 'Instance A must be blocked from overwriting Instance B version');
+      // Verify Instance B's version 17 remains untouched
+      const finalKV = kvStorage.get('site_settings');
+      assert.strictEqual(finalKV.version, baseVer + 1);
+      assert.strictEqual(finalKV.global.theme, 'nature', 'Instance B changes preserved intact');
+      console.log('    ✓ Atomic compare-and-commit in shared KV prevented concurrent version overwrite race');
+
+      // Test 3.5: KV failure during settings write fails closed without modifying local state
+      console.log('\n  [Test 3.5] KV failure during settings write fails closed without modifying local state');
+      mockServerMode = '500';
+      let writeOutageThrown = false;
+      try {
+        await saveSiteSettings({ global: { theme: 'day' } }, 'admin_fail_test');
+      } catch (err) {
+        writeOutageThrown = true;
+        assert.strictEqual(err.code, 'KV_WRITE_FAILED');
+        assert.strictEqual(err.status, 503);
+      }
+      assert.strictEqual(writeOutageThrown, true, 'KV 500 must fail closed with 503 KV_WRITE_FAILED');
+      mockServerMode = 'normal';
+
+      // Verify that local settings were not updated with the failed changes
+      const readAfterFailedWrite = await getSiteSettingsAsync();
+      assert.notStrictEqual(readAfterFailedWrite.global?.theme, 'day', 'Uncommitted settings must not be cached or saved');
+      console.log('    ✓ Write failure returned 503 and did not corrupt or update local settings');
+
       console.log('\n=======================================================');
-      console.log('✅ ALL SESSION REVOCATION & DISTRIBUTED LOCK TESTS PASSED!');
+      console.log('✅ ALL SESSION REVOCATION, LOCK & PERSISTENCE TESTS PASSED!');
       console.log('=======================================================\n');
 
       restoreDataFiles();

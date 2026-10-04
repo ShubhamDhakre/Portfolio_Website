@@ -92,7 +92,72 @@ const mockServer = http.createServer((req, res) => {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ result: existed ? 1 : 0 }));
       } else if (action === 'EVAL') {
-        // command: ['EVAL', script, 1, key, token]
+        const script = command[1];
+        const numKeys = Number(command[2]);
+
+        // Case A: RENEW_LEASE_LUA: ['EVAL', script, 1, lockKey, lockToken, ttlSeconds]
+        if (script && script.includes('expire') && !script.includes('del')) {
+          const lockKey = command[3];
+          const lockToken = command[4];
+          const currentVal = kvStorage.has(lockKey) ? kvStorage.get(lockKey) : null;
+          if (currentVal !== null && String(currentVal) === String(lockToken)) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 1 }));
+          } else {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 0 }));
+          }
+          return;
+        }
+
+        // Case B: ATOMIC_COMMIT_SETTINGS_LUA: ['EVAL', script, 2, settingsKey, lockKey, serializedDoc, lockToken, baseVersion]
+        if (numKeys === 2) {
+          const settingsKey = command[3];
+          const lockKey = command[4];
+          const serializedDoc = command[5];
+          const lockToken = command[6];
+          const baseVersion = command[7];
+
+          // Check lock ownership
+          const currentLock = kvStorage.has(lockKey) ? kvStorage.get(lockKey) : null;
+          if (lockKey && lockToken && currentLock !== lockToken) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'LOCK_LOST' }));
+            return;
+          }
+
+          // Check baseVersion
+          const currentVal = kvStorage.has(settingsKey) ? kvStorage.get(settingsKey) : null;
+          if (currentVal && baseVersion !== undefined && baseVersion !== null && baseVersion !== '') {
+            let currentVer = null;
+            if (typeof currentVal === 'object' && currentVal !== null) {
+              currentVer = currentVal.version;
+            } else if (typeof currentVal === 'string') {
+              try {
+                currentVer = JSON.parse(currentVal).version;
+              } catch {
+                const match = currentVal.match(/"version"\s*:\s*(\d+)/);
+                if (match) currentVer = Number(match[1]);
+              }
+            }
+            if (currentVer !== null && Number(currentVer) !== Number(baseVersion)) {
+              res.writeHead(200, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ result: 'VERSION_CONFLICT' }));
+              return;
+            }
+          }
+
+          let toStore = serializedDoc;
+          if (typeof serializedDoc === 'string') {
+            try { toStore = JSON.parse(serializedDoc); } catch {}
+          }
+          kvStorage.set(settingsKey, toStore);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ result: 'OK' }));
+          return;
+        }
+
+        // Case C: COMPARE_AND_DELETE_LUA: ['EVAL', script, 1, key, expectedToken]
         const key = command[3];
         const expectedToken = command[4];
         const currentVal = kvStorage.has(key) ? kvStorage.get(key) : null;

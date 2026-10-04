@@ -264,6 +264,13 @@ export function validateSettingsPayload(payload) {
     }
   }
 
+  if (payload.requireVersionCheck !== undefined) {
+    sanitized.requireVersionCheck = Boolean(payload.requireVersionCheck);
+    if (sanitized.requireVersionCheck && sanitized.expectedVersion === undefined) {
+      errors.push('expectedVersion is required when requireVersionCheck is true');
+    }
+  }
+
   if (errors.length > 0) {
     const err = new Error(`Validation failed: ${errors.join(', ')}`);
     err.status = 400;
@@ -496,10 +503,14 @@ function withInProcessLock(fn) {
 export async function saveSiteSettings(updatedFields, updatedBy = 'admin') {
   return withInProcessLock(async () => {
     let lockToken = null;
+    let lease = null;
 
     if (isSharedKVConfigured()) {
       try {
         lockToken = await kvStore.acquireLock('lock:site_settings', 4, 6, 50);
+        // Start lease renewal heartbeat: automatically renews the lock every 1500ms
+        // so long operations do not outlive their lock while still active
+        lease = kvStore.createLockLease('lock:site_settings', lockToken, 4, 1500);
       } catch (lockErr) {
         if (lockErr.code === 'CONCURRENT_UPDATE_CONFLICT') {
           throw lockErr;
@@ -513,8 +524,9 @@ export async function saveSiteSettings(updatedFields, updatedBy = 'admin') {
     }
 
     try {
-      // 1. Fetch current settings inside the lock to ensure latest version
-      const current = await getSiteSettingsAsync();
+      // 1. Fetch authoritative current settings directly from KV (bypassing local 5s cache)
+      const current = await getSiteSettingsAsync({ forceRefresh: true });
+      const baseVersion = current.version;
 
       // 2. Concurrency check: optimistic locking if client provided expectedVersion
       if (typeof updatedFields.expectedVersion === 'number') {
@@ -528,13 +540,28 @@ export async function saveSiteSettings(updatedFields, updatedBy = 'admin') {
         }
       }
 
+      // Check if lease was lost during read or validation
+      if (lease && lease.isLost()) {
+        const lockLostErr = new Error('Distributed lock ownership was lost before settings could be committed. Update aborted to prevent concurrent overwrite.');
+        lockLostErr.status = 409;
+        lockLostErr.code = 'LOCK_LOST';
+        throw lockLostErr;
+      }
+
       // 3. Build new version document
       const newDoc = buildNextSettingsDoc(current, updatedFields, updatedBy);
 
-      // 4. Persist to shared authoritative KV store if configured
+      // 4. Persist to shared authoritative KV store with atomic compare-and-commit
+      // Verifies BOTH lock ownership and that version in KV has not changed since read
       if (isSharedKVConfigured()) {
         try {
-          const writeSuccess = await kvStore.set('site_settings', newDoc);
+          const writeSuccess = await kvStore.commitSettingsAtomic(
+            'site_settings',
+            'lock:site_settings',
+            newDoc,
+            lockToken,
+            baseVersion
+          );
           if (!writeSuccess) {
             const writeErr = new Error('Failed to persist settings to authoritative shared KV store.');
             writeErr.status = 503;
@@ -542,6 +569,9 @@ export async function saveSiteSettings(updatedFields, updatedBy = 'admin') {
             throw writeErr;
           }
         } catch (err) {
+          if (err.code === 'LOCK_LOST' || err.code === 'VERSION_CONFLICT') {
+            throw err;
+          }
           console.error('[STORAGE CRITICAL] Authoritative KV write failed:', err.message);
           const writeErr = new Error('Failed to persist settings to authoritative shared KV store.');
           writeErr.status = 503;
@@ -558,6 +588,9 @@ export async function saveSiteSettings(updatedFields, updatedBy = 'admin') {
 
       return newDoc;
     } finally {
+      if (lease) {
+        lease.stop();
+      }
       if (lockToken && isSharedKVConfigured()) {
         try {
           await kvStore.releaseLock('lock:site_settings', lockToken);

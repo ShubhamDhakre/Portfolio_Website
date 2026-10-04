@@ -19,6 +19,54 @@ const COMPARE_AND_DELETE_LUA =
   'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end';
 
 /**
+ * Lua script for Redis EVAL:
+ * Atomically renews a distributed lock's TTL (ARGV[2]) only if the key's value matches lock token (ARGV[1]).
+ * If they match, updates expiration and returns 1.
+ * If they do not match or the key has expired, returns 0 without extending anything.
+ */
+const RENEW_LEASE_LUA =
+  'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("expire", KEYS[1], ARGV[2]) else return 0 end';
+
+/**
+ * Lua script for Redis EVAL:
+ * Atomically commits settings to shared KV only if:
+ * 1. Lock ownership check: KEYS[2] matches ARGV[2] (ensures writer still owns lock).
+ * 2. Version check: KEYS[1] current version matches ARGV[3] (ensures no concurrent version race).
+ * Returns "OK" on success, "LOCK_LOST" if lock was lost/stolen, "VERSION_CONFLICT" if version changed.
+ */
+const ATOMIC_COMMIT_SETTINGS_LUA = `
+if KEYS[2] and ARGV[2] and ARGV[2] ~= "" then
+  local currentLock = redis.call("get", KEYS[2])
+  if currentLock ~= ARGV[2] then
+    return "LOCK_LOST"
+  end
+end
+
+local currentRaw = redis.call("get", KEYS[1])
+if currentRaw and ARGV[3] and ARGV[3] ~= "" then
+  local expectedVer = tonumber(ARGV[3])
+  if expectedVer then
+    local currentVer = nil
+    local status, doc = pcall(cjson.decode, currentRaw)
+    if status and doc and doc.version then
+      currentVer = tonumber(doc.version)
+    else
+      local match = string.match(currentRaw, '"version"%s*:%s*(%d+)')
+      if match then
+        currentVer = tonumber(match)
+      end
+    end
+    if currentVer and currentVer ~= expectedVer then
+      return "VERSION_CONFLICT"
+    end
+  end
+end
+
+redis.call("set", KEYS[1], ARGV[1])
+return "OK"
+`.trim();
+
+/**
  * Custom error class for failures in authoritative shared KV operations.
  * Allows middleware and route handlers to differentiate between missing keys
  * and network/upstream failures (to enforce fail-closed security).
@@ -215,6 +263,118 @@ export const kvStore = {
       console.warn('[STORAGE] Error releasing distributed lock:', err.message);
       return false;
     }
+  },
+
+  /**
+   * Renew the lease of a distributed lock if the token matches.
+   * Uses Redis Lua script (EVAL) to ensure renewal is atomic.
+   * Returns true if lease was extended, false if lock was lost or token mismatch.
+   */
+  async renewLock(lockKey, lockToken, ttlSeconds = 4) {
+    if (!isSharedKVConfigured()) {
+      return false;
+    }
+    if (!lockKey || !lockToken || typeof lockToken !== 'string') {
+      return false;
+    }
+
+    try {
+      const res = await executeKVPost([
+        'EVAL',
+        RENEW_LEASE_LUA,
+        1,
+        lockKey,
+        lockToken,
+        Math.round(ttlSeconds)
+      ]);
+      return Number(res) === 1;
+    } catch (err) {
+      console.warn('[STORAGE] Error renewing distributed lock lease:', err.message);
+      return false;
+    }
+  },
+
+  /**
+   * Creates a managed lease handle that automatically renews the distributed lock
+   * in the background at regular intervals until stopped.
+   * If renewal fails (e.g. lock expired/stolen or network outage), marks the lease as lost.
+   */
+  createLockLease(lockKey, lockToken, ttlSeconds = 4, renewIntervalMs = 1500) {
+    let active = true;
+    let lost = false;
+    let timer = null;
+
+    const renew = async () => {
+      if (!active) return;
+      try {
+        const ok = await this.renewLock(lockKey, lockToken, ttlSeconds);
+        if (!ok && active) {
+          lost = true;
+          active = false;
+          if (timer) clearInterval(timer);
+        }
+      } catch {
+        // network glitch - will retry on next tick
+      }
+    };
+
+    if (isSharedKVConfigured() && lockToken) {
+      timer = setInterval(renew, renewIntervalMs);
+      if (timer.unref) timer.unref();
+    }
+
+    return {
+      isLost: () => lost,
+      stop: () => {
+        active = false;
+        if (timer) clearInterval(timer);
+      }
+    };
+  },
+
+  /**
+   * Atomically commits settings to shared KV only if:
+   * 1. The distributed lock is STILL owned by lockToken.
+   * 2. The document version currently in KV matches expectedBaseVersion (preventing cross-instance race conditions).
+   *
+   * Throws Error with code 'LOCK_LOST' (409) if lock ownership was lost.
+   * Throws Error with code 'VERSION_CONFLICT' (409) if document version in KV changed.
+   * Throws KVStoreError (503) on network failure or KV outage.
+   */
+  async commitSettingsAtomic(settingsKey, lockKey, newDoc, lockToken, expectedBaseVersion) {
+    if (!isSharedKVConfigured()) {
+      return false;
+    }
+
+    const serialized = typeof newDoc === 'object' ? JSON.stringify(newDoc) : String(newDoc);
+    const verStr = expectedBaseVersion !== undefined && expectedBaseVersion !== null ? String(expectedBaseVersion) : '';
+
+    const res = await executeKVPost([
+      'EVAL',
+      ATOMIC_COMMIT_SETTINGS_LUA,
+      2,
+      settingsKey,
+      lockKey,
+      serialized,
+      lockToken || '',
+      verStr
+    ]);
+
+    if (res === 'LOCK_LOST') {
+      const lockLostErr = new Error('Distributed lock ownership was lost before settings could be committed. Update aborted to prevent concurrent overwrite.');
+      lockLostErr.status = 409;
+      lockLostErr.code = 'LOCK_LOST';
+      throw lockLostErr;
+    }
+
+    if (res === 'VERSION_CONFLICT') {
+      const conflictErr = new Error('Settings conflict: Current authoritative version has changed since read. Update aborted to prevent overwriting concurrent changes.');
+      conflictErr.status = 409;
+      conflictErr.code = 'VERSION_CONFLICT';
+      throw conflictErr;
+    }
+
+    return res === 'OK';
   },
 
   /**
