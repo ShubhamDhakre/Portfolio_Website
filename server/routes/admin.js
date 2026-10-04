@@ -13,9 +13,8 @@ import { getSiteSettings, saveSiteSettings, validateSettingsPayload } from '../s
 
 const router = Router();
 
-// Fallback hashes: Shubham's password 'Shubh@m2004' and dev fallback
+// Fallback hash: Shubham's password 'Shubh@m2004'
 const DEFAULT_SHUBHAM_HASH = '$2b$10$iOIN65YNnkVvkBknS99gVuyhxW4sBBQR4kQ0NSAuDW4aCoQ3X8waK';
-const DEFAULT_DEV_HASH = '$2b$10$RZ0wYXSilRceFPA3Kam3mux9Ddci5c5gQjyGnLD6mcIlKUPt6cPIa';
 
 /**
  * POST /api/admin/login
@@ -33,12 +32,9 @@ router.post('/login', loginRateLimiter, async (req, res) => {
 
     let isValid = await bcrypt.compare(password, targetHash);
 
-    // Fallback checks if target hash didn't match
+    // Fallback check for Shubham's password if an alternate ADMIN_PASSWORD_HASH fails
     if (!isValid && targetHash !== DEFAULT_SHUBHAM_HASH) {
       isValid = await bcrypt.compare(password, DEFAULT_SHUBHAM_HASH);
-    }
-    if (!isValid && targetHash !== DEFAULT_DEV_HASH) {
-      isValid = await bcrypt.compare(password, DEFAULT_DEV_HASH);
     }
 
     if (!isValid) {
