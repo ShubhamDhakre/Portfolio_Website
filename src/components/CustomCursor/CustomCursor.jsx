@@ -30,19 +30,33 @@ export default function CustomCursor({ cursorEnabled = true }) {
     const query = window.matchMedia('(pointer: fine) and (hover: hover)');
     const updateEnabled = () => setDeviceSupportsCursor(query.matches);
 
-    query.addEventListener?.('change', updateEnabled);
+    if (query.addEventListener) {
+      query.addEventListener('change', updateEnabled);
+    } else if (query.addListener) {
+      query.addListener(updateEnabled);
+    }
 
-    if (enabled) {
+    return () => {
+      if (query.removeEventListener) {
+        query.removeEventListener('change', updateEnabled);
+      } else if (query.removeListener) {
+        query.removeListener(updateEnabled);
+      }
+    };
+  }, []);
+
+  // Manage body class for native cursor hiding only when custom cursor is enabled AND visible
+  useEffect(() => {
+    if (enabled && isVisible) {
       document.body.classList.add('custom-cursor-active');
     } else {
       document.body.classList.remove('custom-cursor-active');
     }
 
     return () => {
-      query.removeEventListener?.('change', updateEnabled);
       document.body.classList.remove('custom-cursor-active');
     };
-  }, [enabled]);
+  }, [enabled, isVisible]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -54,6 +68,10 @@ export default function CustomCursor({ cursorEnabled = true }) {
     let rafId = null;
     let lastCssX = -9999;
     let lastCssY = -9999;
+    let hasMoved = false;
+    let isPointerInViewport = false;
+    let lastBadge = '';
+    let lastHover = false;
 
     const animateCursor = () => {
       // Smooth lerp tracking
@@ -77,6 +95,19 @@ export default function CustomCursor({ cursorEnabled = true }) {
       rafId = requestAnimationFrame(animateCursor);
     };
 
+    const startLoop = () => {
+      if (!rafId) {
+        rafId = requestAnimationFrame(animateCursor);
+      }
+    };
+
+    const stopLoop = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+    };
+
     const handleMouseMove = (e) => {
       targetX = e.clientX;
       targetY = e.clientY;
@@ -85,8 +116,15 @@ export default function CustomCursor({ cursorEnabled = true }) {
         hasMoved = true;
         currentX = targetX;
         currentY = targetY;
+        if (cursorRef.current) {
+          cursorRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+        }
+      }
+
+      if (!isPointerInViewport) {
+        isPointerInViewport = true;
         setIsVisible(true);
-        rafId = requestAnimationFrame(animateCursor);
+        startLoop();
       }
 
       // Check contextual cursor attributes
@@ -106,30 +144,73 @@ export default function CustomCursor({ cursorEnabled = true }) {
         else if (norm === 'private') nextBadge = 'PRIVATE';
       }
 
-      setBadgeText((prev) => (prev !== nextBadge ? nextBadge : prev));
-      setIsHovering((prev) => {
-        const nextHover = !!isInteractive || !!cursorAttr;
-        return prev !== nextHover ? nextHover : prev;
-      });
+      if (nextBadge !== lastBadge) {
+        lastBadge = nextBadge;
+        setBadgeText(nextBadge);
+      }
+
+      const nextHover = !!isInteractive || !!cursorAttr;
+      if (nextHover !== lastHover) {
+        lastHover = nextHover;
+        setIsHovering(nextHover);
+      }
     };
 
     const handleMouseLeave = () => {
+      isPointerInViewport = false;
+      stopLoop();
       setIsVisible(false);
+      document.body.classList.remove('custom-cursor-active');
     };
 
     const handleMouseEnter = () => {
-      setIsVisible(true);
+      if (hasMoved) {
+        isPointerInViewport = true;
+        setIsVisible(true);
+        startLoop();
+      }
+    };
+
+    const handleWindowBlur = () => {
+      isPointerInViewport = false;
+      stopLoop();
+      setIsVisible(false);
+      document.body.classList.remove('custom-cursor-active');
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        isPointerInViewport = false;
+        stopLoop();
+        setIsVisible(false);
+        document.body.classList.remove('custom-cursor-active');
+      }
+    };
+
+    const handleWindowMouseOut = (e) => {
+      // If relatedTarget is null/undefined, pointer left the window
+      if (!e.relatedTarget && !e.toElement) {
+        handleMouseLeave();
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove, { passive: true });
+    window.addEventListener('mouseout', handleWindowMouseOut);
+    window.addEventListener('blur', handleWindowBlur);
     document.addEventListener('mouseleave', handleMouseLeave);
     document.addEventListener('mouseenter', handleMouseEnter);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseout', handleWindowMouseOut);
+      window.removeEventListener('blur', handleWindowBlur);
       document.removeEventListener('mouseleave', handleMouseLeave);
       document.removeEventListener('mouseenter', handleMouseEnter);
-      if (rafId) cancelAnimationFrame(rafId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      stopLoop();
+      setIsVisible(false);
+      document.body.classList.remove('custom-cursor-active');
     };
   }, [enabled]);
 

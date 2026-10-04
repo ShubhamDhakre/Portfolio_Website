@@ -536,10 +536,7 @@ p {
 /* Hide default cursor on desktop when custom cursor is active */
 @media (pointer: fine) {
   body.custom-cursor-active,
-  body.custom-cursor-active a,
-  body.custom-cursor-active button,
-  body.custom-cursor-active input,
-  body.custom-cursor-active textarea {
+  body.custom-cursor-active * {
     cursor: none !important;
   }
 }

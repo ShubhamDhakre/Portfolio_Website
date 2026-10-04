@@ -155,9 +155,9 @@ function ThreeScene({
 
     let width = container.clientWidth || window.innerWidth;
     let height = container.clientHeight || 480;
-    const isSmallPhone = window.innerWidth < 400;
-    const isMobile = window.innerWidth < 768;
-    const isTablet = window.innerWidth >= 768 && window.innerWidth < 960;
+    let isSmallPhone = window.innerWidth < 400;
+    let isMobile = window.innerWidth < 768;
+    let isTablet = window.innerWidth >= 768 && window.innerWidth < 960;
 
     // 1. Scene & Camera Setup
     const scene = new THREE.Scene();
@@ -377,19 +377,19 @@ function ThreeScene({
         const newHeight = container.clientHeight;
         if (newWidth === 0 || newHeight === 0) return;
 
-        const newIsSmallPhone = window.innerWidth < 400;
-        const newIsMobile = window.innerWidth < 768;
-        const newIsTablet = window.innerWidth >= 768 && window.innerWidth < 960;
-        camera.position.z = newIsSmallPhone ? 7.2 : (newIsMobile ? 6.8 : newIsTablet ? 6.6 : 6.4);
+        isSmallPhone = window.innerWidth < 400;
+        isMobile = window.innerWidth < 768;
+        isTablet = window.innerWidth >= 768 && window.innerWidth < 960;
+        camera.position.z = isSmallPhone ? 7.2 : (isMobile ? 6.8 : isTablet ? 6.6 : 6.4);
 
         if (coreGroupRef.current) {
-          const base = newIsSmallPhone ? 0.72 : (newIsMobile ? 0.82 : 1.0);
+          const base = isSmallPhone ? 0.72 : (isMobile ? 0.82 : 1.0);
           coreGroupRef.current.scale.set(base, base, base);
         }
 
         camera.aspect = newWidth / newHeight;
         camera.updateProjectionMatrix();
-        const newPixelRatio = Math.min(window.devicePixelRatio || 1, newIsMobile ? 1.05 : (newIsTablet ? 1.25 : 1.5));
+        const newPixelRatio = Math.min(window.devicePixelRatio || 1, isMobile ? 1.05 : (isTablet ? 1.25 : 1.5));
         renderer.setPixelRatio(newPixelRatio);
         renderer.setSize(newWidth, newHeight);
       });
@@ -469,7 +469,6 @@ function ThreeScene({
       const targetScale = isHovered ? (excitation > 1.1 ? 1.08 : 1.04) : 1.0;
       currentScaleMultiplier += (targetScale - currentScaleMultiplier) * 0.08;
 
-      const isSmallPhone = typeof window !== 'undefined' && window.innerWidth < 400;
       const baseScale = isSmallPhone ? 0.72 : (isMobile ? 0.82 : 1.0);
       coreGroup.scale.set(
         baseScale * currentScaleMultiplier,
@@ -636,14 +635,22 @@ function ThreeScene({
       tabIndex={0}
       className={`three-scene-container core-state-${activeCoreState.toLowerCase().replace(/\s+/g, '-')}`}
       data-cursor={activeCoreState === 'EXPLORING' ? 'EXPLORE' : 'INTERACT'}
-      title="Click or press Enter to explore Digital Core system (Shift+Click or Shift+Enter for developer workspace)"
-      aria-label="Interactive 3D Digital Core"
+      aria-label="Interactive 3D Digital Core. Click or press Enter to explore Digital Core system (Shift+Click or Shift+Enter for developer workspace)"
       onKeyDown={handleKeyDown}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={cancelTouchHold}
       onTouchCancel={cancelTouchHold}
     >
+      {/* Screen reader instruction */}
+      <span className="sr-only">
+        Click or press Enter to explore Digital Core system (Shift+Click or Shift+Enter for developer workspace)
+      </span>
+
+      {/* Keyboard accessible focus tooltip/hint */}
+      <span className="core-keyboard-hint" aria-hidden="true">
+        ENTER: EXPLORE · SHIFT+ENTER: WORKSPACE
+      </span>
 
       {/* Mobile Long Press Feedback Pill */}
       {touchHolding && (
