@@ -334,8 +334,13 @@ export const kvStore = {
           active = false;
           if (timer) clearInterval(timer);
         }
-      } catch {
-        // network glitch - will retry on next tick
+      } catch (err) {
+        console.warn('[STORAGE] Lock lease heartbeat error:', err?.message || err);
+        if (active) {
+          lost = true;
+          active = false;
+          if (timer) clearInterval(timer);
+        }
       }
     };
 

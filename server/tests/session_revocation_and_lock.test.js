@@ -49,6 +49,7 @@ let simulateMalformedOnNextCommit = false;
 let simulateLockLostOnNextCommit = false;
 let simulateMissingTokenOnNextCommit = false;
 let simulateInvalidVersionOnNextCommit = false;
+let hookOnSettingsGet = null;
 
 const mockKVServer = http.createServer((req, res) => {
   if (mockServerMode === '500') {
@@ -96,6 +97,11 @@ const mockKVServer = http.createServer((req, res) => {
 
       if (action === 'GET') {
         const key = command[1];
+        if (key === 'site_settings' && typeof hookOnSettingsGet === 'function') {
+          const fn = hookOnSettingsGet;
+          hookOnSettingsGet = null;
+          fn();
+        }
         if (mockServerDropNextGet) {
           mockServerDropNextGet = false;
           res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -1108,8 +1114,87 @@ mockKVServer.listen(0, '127.0.0.1', async () => {
       assert(errMissToken, 'Must preserve MISSING_LOCK_TOKEN');
       assert.strictEqual(errMissToken.code, 'MISSING_LOCK_TOKEN');
       assert.strictEqual(errMissToken.status, 400);
-
       console.log('    ✓ saveSiteSettings() preserved exact error codes and status for DOCUMENT_MISSING (409), MALFORMED_STORED_SETTINGS (502), VERSION_CONFLICT (409), LOCK_LOST (409), INVALID_EXPECTED_VERSION (400), MISSING_LOCK_TOKEN (400)');
+
+      // Test 4.10: Distributed lock lease-renewal failure handling & mid-update lock loss protection
+      console.log('\n  [Test 4.10] Distributed lock lease-renewal failure handling & protection');
+
+      // 4.10.a: Heartbeat renewal failure marks lease as lost
+      const directLockKey = 'lock:lease_direct_test';
+      const directToken = await kvStore.acquireLock(directLockKey, 2);
+      const directLease = kvStore.createLockLease(directLockKey, directToken, 2, 25);
+      assert.strictEqual(directLease.isLost(), false, 'Lease must start as active/not lost');
+
+      // Simulate lock loss in KV (key deleted or expired)
+      kvStorage.delete(directLockKey);
+      await new Promise((r) => setTimeout(r, 60)); // Wait for renewal heartbeat to execute
+
+      assert.strictEqual(directLease.isLost(), true, 'Renewal failure must mark lease as lost');
+      directLease.stop();
+
+      // 4.10.b: Upstream KV 500 during lease renewal heartbeat fails closed
+      const lease500Key = 'lock:lease_500_test';
+      const lease500Token = await kvStore.acquireLock(lease500Key, 2);
+      const lease500 = kvStore.createLockLease(lease500Key, lease500Token, 2, 25);
+      mockServerMode = '500';
+      await new Promise((r) => setTimeout(r, 60)); // Wait for heartbeat to encounter 500
+      mockServerMode = 'normal';
+
+      assert.strictEqual(lease500.isLost(), true, 'KV 500 during renewal must fail closed and mark lease as lost');
+      lease500.stop();
+      kvStorage.delete(lease500Key);
+
+      // 4.10.c: Mid-update lock loss or renewal failure cannot commit settings or overwrite newer updates
+      const baselineDoc4_10 = {
+        version: 80,
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'admin',
+        global: { theme: 'default', customThemeName: 'UntouchedOriginal' }
+      };
+      kvStorage.set('site_settings', baselineDoc4_10);
+      invalidateSettingsCache();
+
+      // Hook fires during Instance A's read, simulating lock loss/stolen lock and a newer commit by Instance B
+      hookOnSettingsGet = () => {
+        kvStorage.set('lock:site_settings', 'instance-B-token-stolen');
+        kvStorage.set('site_settings', {
+          version: 81,
+          updatedAt: new Date().toISOString(),
+          updatedBy: 'instance_B',
+          global: { theme: 'nature', customThemeName: 'InstanceBWinningUpdate' }
+        });
+      };
+
+      let instanceALostError = null;
+      try {
+        await saveSiteSettings({ global: { customThemeName: 'AttemptedCorruptingTheme' } }, 'instance_A');
+      } catch (err) {
+        instanceALostError = err;
+      }
+
+      assert(instanceALostError, 'Instance A must be blocked from committing after losing lock ownership');
+      assert.strictEqual(instanceALostError.code, 'LOCK_LOST');
+      assert.strictEqual(instanceALostError.status, 409);
+
+      // Verify authoritative KV settings were preserved and NOT overwritten
+      const finalSettingsInKV = kvStorage.get('site_settings');
+      assert.strictEqual(finalSettingsInKV.version, 81, 'Version in KV must remain 81 from Instance B');
+      assert.strictEqual(
+        finalSettingsInKV.global?.customThemeName,
+        'InstanceBWinningUpdate',
+        'Authoritative KV settings must remain Instance B update'
+      );
+      assert.notStrictEqual(
+        finalSettingsInKV.global?.customThemeName,
+        'AttemptedCorruptingTheme',
+        'Attempted update from lock-lost writer must never be written to KV'
+      );
+
+      // Verify local in-memory cache was not corrupted
+      const freshRead = await getSiteSettingsAsync({ forceRefresh: true });
+      assert.strictEqual(freshRead.version, 81);
+      assert.strictEqual(freshRead.global?.customThemeName, 'InstanceBWinningUpdate');
+      console.log('    ✓ Heartbeat renewal failure & mid-update lock loss strictly aborted with 409 LOCK_LOST without overwriting newer updates');
 
       console.log('\n=======================================================');
       console.log('✅ ALL SESSION REVOCATION, LOCK & PERSISTENCE TESTS PASSED!');

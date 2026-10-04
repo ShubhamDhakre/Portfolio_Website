@@ -610,6 +610,13 @@ export async function saveSiteSettings(updatedFields, updatedBy = 'admin') {
       // 4. Persist to shared authoritative KV store with atomic compare-and-commit
       // Verifies BOTH lock ownership and that version in KV has not changed since read
       if (isSharedKVConfigured()) {
+        if (lease && lease.isLost()) {
+          const lockLostErr = new Error('Distributed lock ownership was lost before settings could be committed. Update aborted to prevent concurrent overwrite.');
+          lockLostErr.status = 409;
+          lockLostErr.code = 'LOCK_LOST';
+          throw lockLostErr;
+        }
+
         try {
           const writeSuccess = await kvStore.commitSettingsAtomic(
             'site_settings',
