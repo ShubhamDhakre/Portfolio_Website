@@ -23,7 +23,7 @@
     "animationQuality": "HIGH",
     "renderScale": "HIGH",
     "devPerformance": {
-      "visible": true,
+      "visible": false,
       "showFPS": true,
       "showFrameTime": true,
       "showDPR": true,
@@ -56,7 +56,7 @@
     "animationQuality": "HIGH",
     "renderScale": "HIGH",
     "devPerformance": {
-      "visible": true,
+      "visible": false,
       "showFPS": true,
       "showFrameTime": true,
       "showDPR": true,

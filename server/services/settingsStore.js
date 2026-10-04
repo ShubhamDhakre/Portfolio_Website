@@ -17,7 +17,7 @@ const TMP_TEMP_FILE = path.join('/tmp', 'site-settings.tmp.json');
 let inMemorySettingsCache = null;
 
 export const DEFAULT_DEV_PERFORMANCE = {
-  visible: true,
+  visible: false, // Default off for clean portfolio presentation
   showFPS: true,
   showFrameTime: true,
   showDPR: true,

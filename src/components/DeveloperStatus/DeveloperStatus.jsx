@@ -39,7 +39,19 @@ const DEVELOPER_THOUGHTS = [
  */
 function DeveloperStatus() {
   const [now, setNow] = useState(() => new Date());
-  const [isCollapsed, setIsCollapsed] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 768 : false));
+  // Default collapsed on laptops and tablets (< 1280px) to maximize content reading area
+  const [isCollapsed, setIsCollapsed] = useState(() => (typeof window !== 'undefined' ? window.innerWidth < 1280 : false));
+
+  // Auto-collapse when resizing down to smaller screens
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setIsCollapsed(true);
+      }
+    };
+    window.addEventListener('resize', handleResize, { passive: true });
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Initialize random thought avoiding consecutive duplicate in session
   const [thoughtIndex, setThoughtIndex] = useState(() => {

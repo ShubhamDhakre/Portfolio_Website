@@ -35,15 +35,15 @@
   --bg-radial: radial-gradient(circle at 50% 0%, #151326 0%, #080B16 70%);
 
   --text-primary: #F4F2F8;
-  --text-secondary: #9A9AAF;
-  --text-muted: #6F7185;
+  --text-secondary: #A7A8BD;
+  --text-muted: #8E8FA8;
 
-  /* Muted Violet Accents */
-  --accent-primary: #6D5BA6;
-  --accent-secondary: #4A416B;
-  --accent-soft: #8B7BB8;
-  --accent-highlight: #8B7BB8;
-  --accent-glow: rgba(109, 91, 166, 0.25);
+  /* Muted Violet Accents (WCAG AA Compliant on Dark Glass) */
+  --accent-primary: #806EC0;
+  --accent-secondary: #574B7F;
+  --accent-soft: #9A8AC8;
+  --accent-highlight: #A898D9;
+  --accent-glow: rgba(128, 110, 192, 0.28);
 
   /* 3-TIER LIQUID GLASS MATERIAL SYSTEM (Dark) */
   /* Level 1: Transparent Glass (Navbar, Main Containers) */
@@ -98,14 +98,14 @@
   --bg-radial: radial-gradient(circle at 50% 0%, #ECE8F6 0%, #F3F2F7 70%);
 
   --text-primary: #17151F;
-  --text-secondary: #5F5A6D;
-  --text-muted: #858091;
+  --text-secondary: #484454;
+  --text-muted: #5B5668;
 
-  --accent-primary: #6D5BA6;
-  --accent-secondary: #4A416B;
-  --accent-soft: #8B7BB8;
-  --accent-highlight: #6D5BA6;
-  --accent-glow: rgba(109, 91, 166, 0.16);
+  --accent-primary: #594494;
+  --accent-secondary: #3D2D68;
+  --accent-soft: #7C67B6;
+  --accent-highlight: #594494;
+  --accent-glow: rgba(89, 68, 148, 0.16);
 
   /* 3-TIER LIQUID VIOLET GLASS MATERIAL SYSTEM (Light) */
   /* Level 1: Transparent Glass */

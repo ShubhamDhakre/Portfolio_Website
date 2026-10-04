@@ -5,7 +5,7 @@
  */
 
 export const DEFAULT_DEV_PERFORMANCE = {
-  visible: true,
+  visible: false, // Clean by default; toggleable via <SYS.DEV /> or Ctrl+K
   showFPS: true,
   showFrameTime: true,
   showDPR: true,
