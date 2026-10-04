@@ -70,14 +70,18 @@ function DeveloperStatus() {
   });
 
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const transitionTimerRef = React.useRef(null);
 
-  // Self-contained live clock interval
+  // Self-contained live clock interval and timer cleanup
   useEffect(() => {
     const timer = setInterval(() => {
       setNow(new Date());
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    };
   }, []);
 
   // Format dynamic date
@@ -120,7 +124,8 @@ function DeveloperStatus() {
     if (isTransitioning) return;
     setIsTransitioning(true);
 
-    setTimeout(() => {
+    if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    transitionTimerRef.current = setTimeout(() => {
       setThoughtIndex((prev) => {
         let nextIndex = Math.floor(Math.random() * DEVELOPER_THOUGHTS.length);
         if (DEVELOPER_THOUGHTS.length > 1 && nextIndex === prev) {
@@ -134,6 +139,7 @@ function DeveloperStatus() {
         return nextIndex;
       });
       setIsTransitioning(false);
+      transitionTimerRef.current = null;
     }, 180);
   }, [isTransitioning]);
 

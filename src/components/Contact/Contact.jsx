@@ -54,7 +54,7 @@ function Contact() {
       document.body.removeChild(textArea);
       if (successful) {
         setCopied(true);
-        setTimeout(() => setCopied(false), 2200);
+        copyTimerRef.current = setTimeout(() => setCopied(false), 2200);
       }
     } catch {
       // Ignore if copy unsupported

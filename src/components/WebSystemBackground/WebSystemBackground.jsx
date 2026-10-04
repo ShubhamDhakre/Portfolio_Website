@@ -399,7 +399,7 @@ function WebSystemBackground({
       cancelAnimationFrame(animationFrameId);
       if (resizeTimer) cancelAnimationFrame(resizeTimer);
     };
-  }, [theme, effectiveBgType, backgroundEnabled, backgroundQuality, mouseEffectsEnabled, customBackgroundConfig]);
+  }, [theme, effectiveBgType, backgroundEnabled, backgroundQuality, customBackgroundConfig]);
 
   if (!backgroundEnabled) {
     return null;

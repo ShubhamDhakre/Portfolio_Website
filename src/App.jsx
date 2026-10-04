@@ -13,12 +13,14 @@ import Experiments from './components/Experiments/Experiments';
 import Contact from './components/Contact/Contact';
 import Footer from './components/Footer/Footer';
 import CustomCursor from './components/CustomCursor/CustomCursor';
-import EasterEggModal from './components/EasterEgg/EasterEggModal';
 import WebSystemBackground from './components/WebSystemBackground/WebSystemBackground';
-import PrivateControlLayer from './components/PrivateControlLayer/PrivateControlLayer';
 import PerformanceMonitorHUD from './components/PerformanceMonitor/PerformanceMonitorHUD';
 import { useGlobalSiteSettings } from './hooks/useGlobalSiteSettings';
 import { DEFAULT_DEV_PERFORMANCE } from './utils/performanceConfig';
+
+// Lazy-load hidden Easter Egg console and Private Control Layer to keep initial bundle lean
+const EasterEggModal = React.lazy(() => import('./components/EasterEgg/EasterEggModal'));
+const PrivateControlLayer = React.lazy(() => import('./components/PrivateControlLayer/PrivateControlLayer'));
 
 import './App.css';
 
@@ -30,7 +32,7 @@ import './App.css';
  * global server settings & hidden Password-Protected Global Control Center.
  */
 export default function App() {
-  const { theme, toggleTheme, setTheme } = useTheme();
+  const { theme, toggleTheme, setTheme, isExplicitlySelected } = useTheme();
   const { progress, isScrolled } = useScrollProgress();
 
   // Synchronized Global Site Settings & Dual-Storage Content
@@ -42,6 +44,36 @@ export default function App() {
     updatedAt: globalUpdatedAt,
     refreshGlobalSettings
   } = useGlobalSiteSettings();
+
+  // Synchronize published global theme to useTheme adhering to precedence rules:
+  // 1. Local Preview active -> strictly isolated, never overwritten by global
+  // 2. Explicit user toggle -> preserved during session unless a new global configuration is published
+  // 3. Published server global theme -> applied to visitor display and HTML data-theme attribute
+  const lastAppliedGlobalVersionRef = useRef(null);
+
+  useEffect(() => {
+    const serverTheme = perfSettings?.theme;
+    if (!serverTheme) return;
+
+    // Check if local preview mode is active on this browser
+    let isPreview = false;
+    try {
+      const raw = localStorage.getItem('portfolio_private_workspace');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        isPreview = Boolean(parsed.previewMode);
+      }
+    } catch {}
+
+    if (isPreview) return;
+
+    // If globalVersion updated (admin published new settings), or visitor has default/initial selection:
+    const isNewPublication = globalVersion && lastAppliedGlobalVersionRef.current !== globalVersion;
+    if (isNewPublication || !isExplicitlySelected) {
+      lastAppliedGlobalVersionRef.current = globalVersion;
+      setTheme(serverTheme, false);
+    }
+  }, [perfSettings?.theme, globalVersion, setTheme, isExplicitlySelected]);
 
   // Hidden developer console state (Navbar trigger / Ctrl+K)
   const [isEasterEggOpen, setIsEasterEggOpen] = useState(false);
@@ -249,31 +281,39 @@ export default function App() {
       <Footer />
 
       {/* Hidden Developer Console Easter Egg */}
-      <EasterEggModal
-        isOpen={isEasterEggOpen}
-        onClose={() => setIsEasterEggOpen(false)}
-        onOpenControlCenter={() => {
-          setIsEasterEggOpen(false);
-          setIsPrivateLayerOpen(true);
-        }}
-      />
+      {isEasterEggOpen && (
+        <React.Suspense fallback={null}>
+          <EasterEggModal
+            isOpen={isEasterEggOpen}
+            onClose={() => setIsEasterEggOpen(false)}
+            onOpenControlCenter={() => {
+              setIsEasterEggOpen(false);
+              setIsPrivateLayerOpen(true);
+            }}
+          />
+        </React.Suspense>
+      )}
 
       {/* Secret Password-Protected Global Control Center */}
-      <PrivateControlLayer
-        isOpen={isPrivateLayerOpen}
-        onClose={() => setIsPrivateLayerOpen(false)}
-        onOpen={() => setIsPrivateLayerOpen(true)}
-        theme={theme}
-        setTheme={setTheme}
-        toggleTheme={toggleTheme}
-        onFocusChange={setCustomFocus}
-        onPrefsChange={setPerfSettings}
-        globalSettings={perfSettings}
-        globalContent={globalContent}
-        globalVersion={globalVersion}
-        globalUpdatedAt={globalUpdatedAt}
-        refreshGlobalSettings={refreshGlobalSettings}
-      />
+      {isPrivateLayerOpen && (
+        <React.Suspense fallback={null}>
+          <PrivateControlLayer
+            isOpen={isPrivateLayerOpen}
+            onClose={() => setIsPrivateLayerOpen(false)}
+            onOpen={() => setIsPrivateLayerOpen(true)}
+            theme={theme}
+            setTheme={setTheme}
+            toggleTheme={toggleTheme}
+            onFocusChange={setCustomFocus}
+            onPrefsChange={setPerfSettings}
+            globalSettings={perfSettings}
+            globalContent={globalContent}
+            globalVersion={globalVersion}
+            globalUpdatedAt={globalUpdatedAt}
+            refreshGlobalSettings={refreshGlobalSettings}
+          />
+        </React.Suspense>
+      )}
 
       {/* Developer Live Performance & Telemetry HUD Overlay */}
       {(perfSettings.devPerformance?.visible ?? DEFAULT_DEV_PERFORMANCE.visible) && (

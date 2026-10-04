@@ -148,7 +148,7 @@ function Experiments({ onStateChange }) {
           <div className="stage-glass-panel">
             <div className="stage-header">
               <span className="stage-terminal-tag">
-                LIVE SANDBOX // EXPERIMENT_{experimentsList[activeExp].number} // STATUS: {experimentsList[activeExp].status}
+                LIVE SANDBOX {'//'} EXPERIMENT_{experimentsList[activeExp].number} {'//'} STATUS: {experimentsList[activeExp].status}
               </span>
               <span className="stage-title">{experimentsList[activeExp].title}</span>
             </div>

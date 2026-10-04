@@ -3,6 +3,45 @@ import * as THREE from 'three';
 import './ThreeScene.css';
 
 /**
+ * Extract theme-based hex colors for Digital Core materials
+ */
+function getThemeColors(currentTheme) {
+  const isDay = currentTheme === 'day';
+  const isNight = !isDay;
+  let primaryColor = 0x6D5BA6;
+  let secondaryColor = 0x4A416B;
+  let highlightColor = 0x8B7BB8;
+
+  if (isDay) {
+    primaryColor = 0x5C4A94;
+    secondaryColor = 0x4A416B;
+    highlightColor = 0x7A68AD;
+  } else if (currentTheme === 'technical') {
+    primaryColor = 0x0284C7;
+    secondaryColor = 0x0369A1;
+    highlightColor = 0x38BDF8;
+  } else if (currentTheme === 'nature') {
+    primaryColor = 0x2D6A4F;
+    secondaryColor = 0x1B4332;
+    highlightColor = 0x74C69D;
+  } else if (currentTheme === 'minimal') {
+    primaryColor = 0x64748B;
+    secondaryColor = 0x475569;
+    highlightColor = 0xCBD5E1;
+  } else if (currentTheme === 'aurora') {
+    primaryColor = 0x0D9488;
+    secondaryColor = 0x115E59;
+    highlightColor = 0xC084FC;
+  } else if (currentTheme === 'monochrome') {
+    primaryColor = 0xA0A0A0;
+    secondaryColor = 0x606060;
+    highlightColor = 0xF0F0F0;
+  }
+
+  return { primaryColor, secondaryColor, highlightColor, isNight };
+}
+
+/**
  * ThreeScene - Digital Glass Core
  * Signature interactive 3D WebGL centerpiece.
  * Architecture & Performance Optimization:
@@ -11,6 +50,7 @@ import './ThreeScene.css';
  * - Frame-throttled raycasting (processed in RAF instead of on pointermove event)
  * - Calibrated pixel ratio cap (1.5x) to eliminate GPU fillrate lag on high-DPI retina screens
  * - Single continuous animation loop, cleaned up on unmount
+ * - Decoupled theme color updates without rebuilding WebGL context
  */
 function ThreeScene({
   theme,
@@ -28,6 +68,10 @@ function ThreeScene({
   const stateTimerRef = useRef(null);
   const clickCountRef = useRef(0);
   const lastClickTimeRef = useRef(0);
+
+  // References for live theme color updates without WebGL context destruction
+  const themeColorsRef = useRef(getThemeColors(theme));
+  const materialsRef = useRef(null);
 
   // Performance settings extraction
   const threeEnabled = perfSettings.threeEnabled !== false;
@@ -52,6 +96,57 @@ function ThreeScene({
     onUnlockRef.current = onUnlockPrivateLayer;
   }, [onUnlockPrivateLayer]);
 
+  // Synchronize theme color updates without rebuilding WebGL scene or restarting render loop
+  useEffect(() => {
+    themeColorsRef.current = getThemeColors(theme);
+    if (!materialsRef.current) return;
+    const { innerMat, nucleusMat, ring1Mat, ring2Mat, ring3Mat, particleMat } = materialsRef.current;
+    const { primaryColor, secondaryColor, highlightColor, isNight } = themeColorsRef.current;
+
+    if (innerMat) {
+      innerMat.color.setHex(highlightColor);
+      innerMat.opacity = isNight ? 0.32 : 0.24;
+    }
+    if (nucleusMat) nucleusMat.color.setHex(primaryColor);
+    if (ring1Mat) ring1Mat.color.setHex(primaryColor);
+    if (ring2Mat) ring2Mat.color.setHex(secondaryColor);
+    if (ring3Mat) ring3Mat.color.setHex(highlightColor);
+    if (particleMat) {
+      particleMat.color.setHex(highlightColor);
+      particleMat.opacity = isNight ? 0.45 : 0.32;
+    }
+  }, [theme]);
+
+  // Keyboard accessibility handler for Digital Core
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      // Shift+Enter triggers secret workspace shortcut (mirroring Shift+Click)
+      if (e.shiftKey) {
+        setCoreState('PRIVATE WORKSPACE');
+        if (onUnlockRef.current) {
+          onUnlockRef.current('DIGITAL CORE (SHIFT+KEYBOARD)');
+        }
+        return;
+      }
+
+      // Standard Enter/Space cycles interactive exploration state without triggering admin
+      clickCountRef.current++;
+      const states = ['ACTIVE', 'PROCESSING', 'EXPLORING', 'READY'];
+      const nextCycleState = states[clickCountRef.current % states.length];
+      setCoreState(nextCycleState);
+
+      if (onStateChangeRef.current) onStateChangeRef.current(`CORE.${nextCycleState}`);
+
+      if (stateTimerRef.current) clearTimeout(stateTimerRef.current);
+      stateTimerRef.current = setTimeout(() => {
+        setCoreState('READY');
+        if (onStateChangeRef.current) onStateChangeRef.current('CORE.READY');
+        stateTimerRef.current = null;
+      }, 3500);
+    }
+  };
+
 
 
   useEffect(() => {
@@ -60,9 +155,9 @@ function ThreeScene({
 
     let width = container.clientWidth || window.innerWidth;
     let height = container.clientHeight || 480;
-    const isSmallPhone = window.innerWidth < 400;
-    const isMobile = window.innerWidth < 768;
-    const isTablet = window.innerWidth >= 768 && window.innerWidth < 960;
+    let isSmallPhone = window.innerWidth < 400;
+    let isMobile = window.innerWidth < 768;
+    let isTablet = window.innerWidth >= 768 && window.innerWidth < 960;
 
     // 1. Scene & Camera Setup
     const scene = new THREE.Scene();
@@ -95,38 +190,8 @@ function ThreeScene({
     scene.add(coreGroup);
     coreGroupRef.current = coreGroup;
 
-    // Theme-based colors
-    const isDay = theme === 'day';
-    const isNight = !isDay;
-    let primaryColor = 0x6D5BA6;
-    let secondaryColor = 0x4A416B;
-    let highlightColor = 0x8B7BB8;
-
-    if (isDay) {
-      primaryColor = 0x5C4A94;
-      secondaryColor = 0x4A416B;
-      highlightColor = 0x7A68AD;
-    } else if (theme === 'technical') {
-      primaryColor = 0x0284C7;
-      secondaryColor = 0x0369A1;
-      highlightColor = 0x38BDF8;
-    } else if (theme === 'nature') {
-      primaryColor = 0x2D6A4F;
-      secondaryColor = 0x1B4332;
-      highlightColor = 0x74C69D;
-    } else if (theme === 'minimal') {
-      primaryColor = 0x64748B;
-      secondaryColor = 0x475569;
-      highlightColor = 0xCBD5E1;
-    } else if (theme === 'aurora') {
-      primaryColor = 0x0D9488;
-      secondaryColor = 0x115E59;
-      highlightColor = 0xC084FC;
-    } else if (theme === 'monochrome') {
-      primaryColor = 0xA0A0A0;
-      secondaryColor = 0x606060;
-      highlightColor = 0xF0F0F0;
-    }
+    // Theme-based colors initialized from themeColorsRef
+    const { primaryColor, secondaryColor, highlightColor, isNight } = themeColorsRef.current;
 
     const materials = [];
 
@@ -241,6 +306,16 @@ function ThreeScene({
     coreGroup.add(hitMesh);
     geometries.push(hitGeo);
 
+    // Register materials in ref for live theme updates without recreating scene
+    materialsRef.current = {
+      innerMat,
+      nucleusMat,
+      ring1Mat,
+      ring2Mat,
+      ring3Mat,
+      particleMat: particlePoints ? particlePoints.material : null
+    };
+
     // Raycaster & Interaction State
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2(-999, -999);
@@ -302,19 +377,19 @@ function ThreeScene({
         const newHeight = container.clientHeight;
         if (newWidth === 0 || newHeight === 0) return;
 
-        const newIsSmallPhone = window.innerWidth < 400;
-        const newIsMobile = window.innerWidth < 768;
-        const newIsTablet = window.innerWidth >= 768 && window.innerWidth < 960;
-        camera.position.z = newIsSmallPhone ? 7.2 : (newIsMobile ? 6.8 : newIsTablet ? 6.6 : 6.4);
+        isSmallPhone = window.innerWidth < 400;
+        isMobile = window.innerWidth < 768;
+        isTablet = window.innerWidth >= 768 && window.innerWidth < 960;
+        camera.position.z = isSmallPhone ? 7.2 : (isMobile ? 6.8 : isTablet ? 6.6 : 6.4);
 
         if (coreGroupRef.current) {
-          const base = newIsSmallPhone ? 0.72 : (newIsMobile ? 0.82 : 1.0);
+          const base = isSmallPhone ? 0.72 : (isMobile ? 0.82 : 1.0);
           coreGroupRef.current.scale.set(base, base, base);
         }
 
         camera.aspect = newWidth / newHeight;
         camera.updateProjectionMatrix();
-        const newPixelRatio = Math.min(window.devicePixelRatio || 1, newIsMobile ? 1.05 : (newIsTablet ? 1.25 : 1.5));
+        const newPixelRatio = Math.min(window.devicePixelRatio || 1, isMobile ? 1.05 : (isTablet ? 1.25 : 1.5));
         renderer.setPixelRatio(newPixelRatio);
         renderer.setSize(newWidth, newHeight);
       });
@@ -394,7 +469,6 @@ function ThreeScene({
       const targetScale = isHovered ? (excitation > 1.1 ? 1.08 : 1.04) : 1.0;
       currentScaleMultiplier += (targetScale - currentScaleMultiplier) * 0.08;
 
-      const isSmallPhone = typeof window !== 'undefined' && window.innerWidth < 400;
       const baseScale = isSmallPhone ? 0.72 : (isMobile ? 0.82 : 1.0);
       coreGroup.scale.set(
         baseScale * currentScaleMultiplier,
@@ -406,7 +480,8 @@ function ThreeScene({
         excitation = Math.max(1.0, excitation - delta * 0.8);
       }
 
-      innerMat.opacity = (isNight ? 0.32 : 0.24) + (isHovered ? 0.15 : 0);
+      const { isNight: currentIsNight } = themeColorsRef.current;
+      innerMat.opacity = (currentIsNight ? 0.32 : 0.24) + (isHovered ? 0.15 : 0);
       nucleusMat.opacity = 0.55 + (isHovered ? 0.2 : 0);
 
       renderer.render(scene, camera);
@@ -474,6 +549,7 @@ function ThreeScene({
 
     // CLEANUP ON UNMOUNT
     return () => {
+      materialsRef.current = null;
       observer.disconnect();
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
@@ -493,7 +569,7 @@ function ThreeScene({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [theme, threeEnabled, particlesEnabled, particleQuality, renderScale, interactionEnabled]);
+  }, [threeEnabled, particlesEnabled, particleQuality, renderScale, interactionEnabled]);
 
   // Mobile / Tablet 1.5s Touch Long-Press Handling
   const handleTouchStart = (e) => {
@@ -555,15 +631,26 @@ function ThreeScene({
   return (
     <div
       ref={mountRef}
+      role="button"
+      tabIndex={0}
       className={`three-scene-container core-state-${activeCoreState.toLowerCase().replace(/\s+/g, '-')}`}
       data-cursor={activeCoreState === 'EXPLORING' ? 'EXPLORE' : 'INTERACT'}
-      title="Click to explore Digital Core system (Shift+Click for developer workspace)"
-      aria-label="Interactive 3D Digital Core"
+      aria-label="Interactive 3D Digital Core. Click or press Enter to explore Digital Core system (Shift+Click or Shift+Enter for developer workspace)"
+      onKeyDown={handleKeyDown}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={cancelTouchHold}
       onTouchCancel={cancelTouchHold}
     >
+      {/* Screen reader instruction */}
+      <span className="sr-only">
+        Click or press Enter to explore Digital Core system (Shift+Click or Shift+Enter for developer workspace)
+      </span>
+
+      {/* Keyboard accessible focus tooltip/hint */}
+      <span className="core-keyboard-hint" aria-hidden="true">
+        ENTER: EXPLORE · SHIFT+ENTER: WORKSPACE
+      </span>
 
       {/* Mobile Long Press Feedback Pill */}
       {touchHolding && (

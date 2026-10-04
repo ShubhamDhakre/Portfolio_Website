@@ -1407,7 +1407,7 @@ export default function PrivateControlLayer({
 
               <div className="summary-divider" />
 
-              <div className="summary-row"><span>SCOPE</span><strong style={{ color: '#8b5cf6' }}>ALL VISITORS</strong></div>
+              <div className="summary-row"><span>SCOPE</span><strong style={{ color: 'var(--accent-primary)' }}>ALL VISITORS</strong></div>
               <div className="summary-row"><span>NEXT VERSION</span><strong>v{serverVersion + 1}</strong></div>
             </div>
 
@@ -1616,7 +1616,7 @@ export default function PrivateControlLayer({
                     </div>
                     <div className="meta-pill">
                       <span className="meta-k">DEV // PERF</span>
-                      <span className="meta-v" style={{ color: (prefs.devPerformance?.visible ?? DEFAULT_DEV_PERFORMANCE.visible) ? '#34d399' : '#f87171' }}>
+                      <span className={`meta-v ${(prefs.devPerformance?.visible ?? DEFAULT_DEV_PERFORMANCE.visible) ? 'live' : 'danger'}`}>
                         {(prefs.devPerformance?.visible ?? DEFAULT_DEV_PERFORMANCE.visible) ? 'VISIBLE (ON)' : 'HIDDEN (OFF)'}
                       </span>
                     </div>
@@ -1676,7 +1676,7 @@ export default function PrivateControlLayer({
                     role="tab"
                     aria-selected={activeTab === 'global-control'}
                     className={`tab-btn ${activeTab === 'global-control' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('global-control'); setCurrentMode('GLOBAL_CONTROL'); }}
+                    onClick={() => setActiveTab('global-control')}
                   >
                     🌐 Global Website Control
                   </button>
@@ -1685,7 +1685,7 @@ export default function PrivateControlLayer({
                     role="tab"
                     aria-selected={activeTab === 'performance'}
                     className={`tab-btn ${activeTab === 'performance' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('performance'); setCurrentMode('BENCHMARKING'); }}
+                    onClick={() => setActiveTab('performance')}
                   >
                     ⚡ Global Performance
                   </button>
@@ -1694,7 +1694,7 @@ export default function PrivateControlLayer({
                     role="tab"
                     aria-selected={activeTab === 'themes'}
                     className={`tab-btn ${activeTab === 'themes' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('themes'); setCurrentMode('THEMING'); }}
+                    onClick={() => setActiveTab('themes')}
                   >
                     🎨 Global Themes
                   </button>
@@ -1703,7 +1703,7 @@ export default function PrivateControlLayer({
                     role="tab"
                     aria-selected={activeTab === 'backgrounds'}
                     className={`tab-btn ${activeTab === 'backgrounds' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('backgrounds'); setCurrentMode('BACKGROUNDS'); }}
+                    onClick={() => setActiveTab('backgrounds')}
                   >
                     🌌 Global Backgrounds
                   </button>
@@ -1712,7 +1712,7 @@ export default function PrivateControlLayer({
                     role="tab"
                     aria-selected={activeTab === 'notes'}
                     className={`tab-btn ${activeTab === 'notes' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('notes'); setCurrentMode('EDITING'); }}
+                    onClick={() => setActiveTab('notes')}
                   >
                     📝 Content & Notes
                   </button>
@@ -1721,7 +1721,7 @@ export default function PrivateControlLayer({
                     role="tab"
                     aria-selected={activeTab === 'console'}
                     className={`tab-btn ${activeTab === 'console' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('console'); setCurrentMode('INTERACTING'); }}
+                    onClick={() => setActiveTab('console')}
                   >
                     💻 Developer Console
                   </button>
@@ -1730,7 +1730,7 @@ export default function PrivateControlLayer({
                     role="tab"
                     aria-selected={activeTab === 'system'}
                     className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('system'); setCurrentMode('READING'); }}
+                    onClick={() => setActiveTab('system')}
                   >
                     📊 Diagnostics & Metrics
                   </button>
@@ -1739,7 +1739,7 @@ export default function PrivateControlLayer({
                     role="tab"
                     aria-selected={activeTab === 'log'}
                     className={`tab-btn ${activeTab === 'log' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('log'); setCurrentMode('READING'); }}
+                    onClick={() => setActiveTab('log')}
                   >
                     📜 Interaction Log
                   </button>
@@ -2646,7 +2646,7 @@ export default function PrivateControlLayer({
                         </div>
                         <div className="diag-item">
                           <span className="diag-key">GLOBAL SCOPE</span>
-                          <span className="diag-val" style={{ color: '#8b5cf6' }}>ALL VISITORS</span>
+                          <span className="diag-val" style={{ color: 'var(--accent-primary)' }}>ALL VISITORS</span>
                         </div>
                         <div className="diag-item">
                           <span className="diag-key">THEME</span>

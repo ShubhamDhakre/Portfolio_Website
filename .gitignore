@@ -28,3 +28,7 @@ dist-ssr
 .env.*
 !.env.example
 
+# Runtime Data and Temporary Files
+server/data/revoked-sessions.json
+server/data/*.tmp.json
+

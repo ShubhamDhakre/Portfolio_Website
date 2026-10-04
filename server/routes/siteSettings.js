@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getSiteSettings } from '../services/settingsStore.js';
+import { getSiteSettingsAsync } from '../services/settingsStore.js';
 
 const router = Router();
 
@@ -8,9 +8,9 @@ const router = Router();
  * Safe public endpoint for all visitors to fetch current global settings & content.
  * Never exposes passwords, hashes, tokens, or private secrets.
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   try {
-    const doc = getSiteSettings();
+    const doc = await getSiteSettingsAsync();
 
     // Sanitize and return only safe public fields
     const publicResponse = {
@@ -32,7 +32,14 @@ router.get('/', (req, res) => {
     res.set('Cache-Control', 'public, max-age=15, stale-while-revalidate=45');
     return res.status(200).json(publicResponse);
   } catch (err) {
-    console.error('Error fetching public site settings:', err);
+    console.error('Error fetching public site settings:', err.message);
+    if (err.code === 'KV_UNAVAILABLE') {
+      return res.status(503).json({
+        error: 'Service Unavailable',
+        code: 'SETTINGS_STORE_UNAVAILABLE',
+        message: 'Authoritative site configuration store is temporarily unavailable.'
+      });
+    }
     return res.status(500).json({
       error: 'Failed to retrieve site configuration',
       version: 1,

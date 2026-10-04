@@ -3,22 +3,60 @@ import bcrypt from 'bcryptjs';
 import {
   createSession,
   destroySession,
-  verifySessionToken,
+  verifySessionTokenAsync,
   requireAdminAuth,
   loginRateLimiter,
   SESSION_COOKIE_NAME,
   SESSION_LIFETIME_MS
 } from '../middleware/auth.js';
-import { getSiteSettings, saveSiteSettings, validateSettingsPayload } from '../services/settingsStore.js';
+import { getSiteSettingsAsync, saveSiteSettings, validateSettingsPayload } from '../services/settingsStore.js';
 
 const router = Router();
 
-// Fallback hash: Shubham's password 'Shubh@m2004'
-const DEFAULT_SHUBHAM_HASH = '$2b$10$iOIN65YNnkVvkBknS99gVuyhxW4sBBQR4kQ0NSAuDW4aCoQ3X8waK';
+/**
+ * Safely retrieve and validate the configured administrator password hash.
+ * In production, fails safely with an explicit error if missing or malformed.
+ */
+export function getAdminPasswordHash() {
+  const hash = process.env.ADMIN_PASSWORD_HASH;
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  // Standard bcrypt hash format: $2a$, $2b$, or $2y$, 2-digit cost, 53 salt+hash chars (total 60 chars)
+  const isBcrypt = typeof hash === 'string' && /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(hash.trim());
+
+  if (isProduction) {
+    if (!hash || !isBcrypt) {
+      throw new Error(
+        '[SECURITY FATAL] Production requires a valid bcrypt ADMIN_PASSWORD_HASH in environment variables. ' +
+        'Please generate one using: npm run hash-password <your_password>'
+      );
+    }
+    return hash.trim();
+  }
+
+  // Development environment check
+  if (!hash || !isBcrypt) {
+    return null;
+  }
+
+  return hash.trim();
+}
+
+// Fail-fast configuration validation on production startup
+if (process.env.NODE_ENV === 'production') {
+  try {
+    getAdminPasswordHash();
+  } catch (err) {
+    console.error(err.message);
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+  }
+}
 
 /**
  * POST /api/admin/login
- * Validates password and sets HttpOnly cookie
+ * Validates password against configured environment hash and sets HttpOnly cookie
  */
 router.post('/login', loginRateLimiter, async (req, res) => {
   try {
@@ -28,14 +66,25 @@ router.post('/login', loginRateLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Password is required.', message: 'Password is required.' });
     }
 
-    const targetHash = process.env.ADMIN_PASSWORD_HASH || DEFAULT_SHUBHAM_HASH;
-
-    let isValid = await bcrypt.compare(password, targetHash);
-
-    // Fallback check for Shubham's password if an alternate ADMIN_PASSWORD_HASH fails
-    if (!isValid && targetHash !== DEFAULT_SHUBHAM_HASH) {
-      isValid = await bcrypt.compare(password, DEFAULT_SHUBHAM_HASH);
+    let targetHash;
+    try {
+      targetHash = getAdminPasswordHash();
+    } catch (configErr) {
+      console.error('[AUTH CONFIG ERROR]', configErr.message);
+      return res.status(503).json({
+        error: 'Service Unavailable',
+        message: 'Administrator authentication is not configured in production.'
+      });
     }
+
+    if (!targetHash) {
+      return res.status(503).json({
+        error: 'Configuration Required',
+        message: 'ADMIN_PASSWORD_HASH is not configured in .env. Generate one with: npm run hash-password'
+      });
+    }
+
+    const isValid = await bcrypt.compare(password, targetHash);
 
     if (!isValid) {
       // Delay response slightly to prevent timing attacks
@@ -45,13 +94,27 @@ router.post('/login', loginRateLimiter, async (req, res) => {
 
     const sessionToken = createSession();
     const isProduction = process.env.NODE_ENV === 'production';
-
-    res.cookie(SESSION_COOKIE_NAME, sessionToken, {
+    const cookieOptions = {
       httpOnly: true,
       secure: isProduction,
       sameSite: 'lax',
-      maxAge: SESSION_LIFETIME_MS,
       path: '/'
+    };
+
+    // Invalidate any previous session and clear stale cookie to prevent session fixation
+    const previousToken = req.cookies?.[SESSION_COOKIE_NAME];
+    if (previousToken) {
+      try {
+        await destroySession(previousToken);
+      } catch (destroyErr) {
+        console.warn('Could not revoke previous session during login:', destroyErr.message);
+      }
+      res.clearCookie(SESSION_COOKIE_NAME, cookieOptions);
+    }
+
+    res.cookie(SESSION_COOKIE_NAME, sessionToken, {
+      ...cookieOptions,
+      maxAge: SESSION_LIFETIME_MS
     });
 
     return res.status(200).json({
@@ -67,49 +130,99 @@ router.post('/login', loginRateLimiter, async (req, res) => {
 
 /**
  * POST /api/admin/logout
- * Clears session cookie
+ * Revokes session from authoritative store and clears session cookie with matching security flags.
+ * If authoritative shared KV fails, returns controlled 503 while ensuring browser cookie is cleared.
  */
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieOptions = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: 'lax',
+    path: '/'
+  };
+
   const token = req.cookies?.[SESSION_COOKIE_NAME];
-  if (token) {
-    destroySession(token);
+
+  // Always clear the browser's session cookie using the existing secure cookie settings,
+  // even if server-side revocation fails or token is missing
+  res.clearCookie(SESSION_COOKIE_NAME, cookieOptions);
+
+  if (!token) {
+    return res.status(200).json({
+      success: true,
+      authenticated: false,
+      message: 'Global control session terminated.'
+    });
   }
 
-  res.clearCookie(SESSION_COOKIE_NAME, {
-    httpOnly: true,
-    path: '/'
-  });
-
-  return res.status(200).json({
-    success: true,
-    authenticated: false,
-    message: 'Global control session terminated.'
-  });
+  try {
+    await destroySession(token);
+    return res.status(200).json({
+      success: true,
+      authenticated: false,
+      message: 'Global control session terminated.'
+    });
+  } catch (err) {
+    console.error('[AUTH] Server-side session revocation failed:', err.message);
+    // If shared KV storage is configured as authoritative in production, never silently suppress a session-revocation failure.
+    // Return an appropriate controlled 503 Service Unavailable response instead of falsely reporting that server-side logout succeeded.
+    return res.status(503).json({
+      success: false,
+      authenticated: false,
+      error: 'Service Unavailable',
+      code: 'REVOCATION_FAILED',
+      message: 'Authoritative session revocation store is temporarily unavailable. Local session cookie has been cleared, but session revocation could not be persisted server-side.'
+    });
+  }
 });
 
 /**
  * GET /api/admin/session
- * Checks whether active admin session is valid
+ * Checks whether active admin session is valid.
+ * Fails closed if authoritative KV store is unavailable.
  */
-router.get('/session', (req, res) => {
+router.get('/session', async (req, res) => {
   const token = req.cookies?.[SESSION_COOKIE_NAME];
-  const isValid = verifySessionToken(token);
+  if (!token) {
+    return res.status(200).json({ authenticated: false });
+  }
 
-  return res.status(200).json({
-    authenticated: Boolean(isValid)
-  });
+  try {
+    const isValid = await verifySessionTokenAsync(token);
+    return res.status(200).json({
+      authenticated: Boolean(isValid)
+    });
+  } catch (err) {
+    if (err.code === 'KV_UNAVAILABLE' || err.status === 503) {
+      return res.status(503).json({
+        authenticated: false,
+        error: 'Service Unavailable',
+        code: 'AUTH_STORE_UNAVAILABLE',
+        message: 'Authoritative session verification store is temporarily unavailable. Please retry.'
+      });
+    }
+    return res.status(200).json({ authenticated: false });
+  }
 });
 
 /**
  * GET /api/admin/settings
  * Returns full global site settings (requires auth)
  */
-router.get('/settings', requireAdminAuth, (req, res) => {
+router.get('/settings', requireAdminAuth, async (req, res) => {
   try {
-    const settings = getSiteSettings();
+    const settings = await getSiteSettingsAsync();
     return res.status(200).json(settings);
   } catch (err) {
-    console.error('Error fetching admin settings:', err);
+    console.error('Error fetching admin settings:', err.message);
+    if (err.code === 'KV_UNAVAILABLE') {
+      return res.status(503).json({
+        error: 'Service Unavailable',
+        code: 'SETTINGS_STORE_UNAVAILABLE',
+        message: 'Authoritative settings store is temporarily unavailable. Please retry.'
+      });
+    }
     return res.status(500).json({ error: 'Failed to retrieve site settings.' });
   }
 });
@@ -118,10 +231,10 @@ router.get('/settings', requireAdminAuth, (req, res) => {
  * PUT or POST /api/admin/settings
  * Updates global site settings atomically (requires auth)
  */
-const handleSaveSettings = (req, res) => {
+const handleSaveSettings = async (req, res) => {
   try {
     const validated = validateSettingsPayload(req.body);
-    const updated = saveSiteSettings(validated, 'admin');
+    const updated = await saveSiteSettings(validated, 'admin');
 
     return res.status(200).json({
       success: true,
@@ -129,9 +242,9 @@ const handleSaveSettings = (req, res) => {
       data: updated
     });
   } catch (err) {
-    console.error('Error updating admin settings:', err);
+    console.error('Error updating admin settings:', err.message);
     return res.status(err.status || 500).json({
-      error: 'CONFIGURATION SAVE FAILED',
+      error: err.code || 'CONFIGURATION SAVE FAILED',
       message: err.message || 'Server could not persist configuration.'
     });
   }
