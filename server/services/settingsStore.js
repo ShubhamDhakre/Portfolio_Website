@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { kvStore, isSharedKVConfigured } from './kvStore.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,6 +16,8 @@ const TMP_SETTINGS_FILE = path.join('/tmp', 'site-settings.json');
 const TMP_TEMP_FILE = path.join('/tmp', 'site-settings.tmp.json');
 
 let inMemorySettingsCache = null;
+let lastKVSyncTime = 0;
+const KV_CACHE_TTL_MS = 5000; // 5-second cache window for high concurrency while ensuring near-instant sync
 
 export const DEFAULT_DEV_PERFORMANCE = {
   visible: false, // Default off for clean portfolio presentation
@@ -252,6 +255,15 @@ export function validateSettingsPayload(payload) {
     }
   }
 
+  // Optimistic concurrency control: expectedVersion validation
+  if (payload.expectedVersion !== undefined) {
+    if (typeof payload.expectedVersion === 'number' && Number.isInteger(payload.expectedVersion)) {
+      sanitized.expectedVersion = payload.expectedVersion;
+    } else {
+      errors.push('expectedVersion must be an integer');
+    }
+  }
+
   if (errors.length > 0) {
     const err = new Error(`Validation failed: ${errors.join(', ')}`);
     err.status = 400;
@@ -262,7 +274,57 @@ export function validateSettingsPayload(payload) {
 }
 
 /**
- * Read global site settings from JSON file
+ * Helper to write serialized settings to disk atomically
+ */
+function writeSettingsToDisk(newDoc) {
+  const jsonString = JSON.stringify(newDoc, null, 2);
+  try {
+    const targetTemp = IS_SERVERLESS ? TMP_TEMP_FILE : TEMP_FILE;
+    const targetDest = IS_SERVERLESS ? TMP_SETTINGS_FILE : SETTINGS_FILE;
+
+    fs.writeFileSync(targetTemp, jsonString, 'utf8');
+    fs.renameSync(targetTemp, targetDest);
+
+    if (!IS_SERVERLESS && fs.existsSync(SETTINGS_FILE)) {
+      try {
+        fs.copyFileSync(SETTINGS_FILE, BACKUP_FILE);
+      } catch (bErr) {
+        console.warn('Could not create backup of settings file:', bErr);
+      }
+    }
+    return true;
+  } catch (fsErr) {
+    console.warn('[STORAGE] Could not write to disk (serverless read-only mode). Saved to memory cache:', fsErr.message);
+    return false;
+  }
+}
+
+/**
+ * Merge partial/raw settings payload with complete defaults
+ */
+function normalizeSettingsDoc(parsed) {
+  const existingDevPerf = (parsed.global || parsed.settings || {})?.devPerformance;
+  const globalBlock = {
+    ...DEFAULT_GLOBAL,
+    ...(parsed.global || parsed.settings || {}),
+    devPerformance: {
+      ...DEFAULT_DEV_PERFORMANCE,
+      ...(existingDevPerf || {})
+    }
+  };
+  return {
+    ...DEFAULT_SETTINGS,
+    ...parsed,
+    global: globalBlock,
+    settings: globalBlock,
+    content: { ...DEFAULT_SETTINGS.content, ...(parsed.content || {}) },
+    customThemes: Array.isArray(parsed.customThemes) ? parsed.customThemes : [],
+    customBackgrounds: Array.isArray(parsed.customBackgrounds) ? parsed.customBackgrounds : []
+  };
+}
+
+/**
+ * Synchronous read of global site settings from memory cache or local JSON file
  */
 export function getSiteSettings() {
   if (inMemorySettingsCache) {
@@ -280,7 +342,7 @@ export function getSiteSettings() {
     if (!raw) {
       if (!IS_SERVERLESS) {
         try {
-          saveSiteSettings(DEFAULT_SETTINGS, 'system_init');
+          writeSettingsToDisk(DEFAULT_SETTINGS);
         } catch {}
       }
       inMemorySettingsCache = DEFAULT_SETTINGS;
@@ -288,24 +350,7 @@ export function getSiteSettings() {
     }
 
     const parsed = JSON.parse(raw);
-    const existingDevPerf = (parsed.global || parsed.settings || {})?.devPerformance;
-    const globalBlock = {
-      ...DEFAULT_GLOBAL,
-      ...(parsed.global || parsed.settings || {}),
-      devPerformance: {
-        ...DEFAULT_DEV_PERFORMANCE,
-        ...(existingDevPerf || {})
-      }
-    };
-    const loadedDoc = {
-      ...DEFAULT_SETTINGS,
-      ...parsed,
-      global: globalBlock,
-      settings: globalBlock,
-      content: { ...DEFAULT_SETTINGS.content, ...(parsed.content || {}) },
-      customThemes: Array.isArray(parsed.customThemes) ? parsed.customThemes : [],
-      customBackgrounds: Array.isArray(parsed.customBackgrounds) ? parsed.customBackgrounds : []
-    };
+    const loadedDoc = normalizeSettingsDoc(parsed);
     inMemorySettingsCache = loadedDoc;
     return loadedDoc;
   } catch (err) {
@@ -313,7 +358,7 @@ export function getSiteSettings() {
     if (fs.existsSync(BACKUP_FILE)) {
       try {
         const backupRaw = fs.readFileSync(BACKUP_FILE, 'utf8');
-        return JSON.parse(backupRaw);
+        return normalizeSettingsDoc(JSON.parse(backupRaw));
       } catch (backupErr) {
         console.error('Failed to read backup file as well:', backupErr);
       }
@@ -323,11 +368,61 @@ export function getSiteSettings() {
 }
 
 /**
- * Atomically write global site settings to JSON file with backup and memory cache
+ * Invalidate in-memory cache to force next read to query authoritative store
  */
-export function saveSiteSettings(updatedFields, updatedBy = 'admin') {
-  const current = getSiteSettings();
+export function invalidateSettingsCache() {
+  inMemorySettingsCache = null;
+  lastKVSyncTime = 0;
+}
 
+/**
+ * Asynchronous read of site settings, checking shared KV store for cross-instance updates in production
+ */
+export async function getSiteSettingsAsync(options = {}) {
+  if (isSharedKVConfigured()) {
+    const now = Date.now();
+    const shouldFetchKV = options.forceRefresh || !inMemorySettingsCache || now - lastKVSyncTime > KV_CACHE_TTL_MS;
+    // Query shared KV if forced, cache is empty, or cache window has expired
+    if (shouldFetchKV) {
+      try {
+        const remote = await kvStore.get('site_settings');
+        if (remote && typeof remote === 'object') {
+          const loadedDoc = normalizeSettingsDoc(remote);
+          inMemorySettingsCache = loadedDoc;
+          lastKVSyncTime = now;
+          return loadedDoc;
+        } else if (remote === null) {
+          // KV store is configured but key not yet initialized (first startup)
+          const initialDoc = getSiteSettings();
+          await kvStore.set('site_settings', initialDoc);
+          inMemorySettingsCache = initialDoc;
+          lastKVSyncTime = now;
+          return initialDoc;
+        }
+      } catch (err) {
+        // Authoritative store failed. Fail closed: do not serve stale local defaults as authoritative!
+        console.error('[SETTINGS CRITICAL] Authoritative KV settings read failed:', err.message);
+        const storeErr = new Error('Authoritative settings store is temporarily unavailable. Please retry.');
+        storeErr.status = 503;
+        storeErr.code = 'KV_UNAVAILABLE';
+        storeErr.originalError = err;
+        throw storeErr;
+      }
+    }
+    if (inMemorySettingsCache) {
+      return inMemorySettingsCache;
+    }
+  } else {
+    kvStore.warnIfUnconfiguredServerless();
+  }
+
+  return getSiteSettings();
+}
+
+/**
+ * Prepare next version of settings document
+ */
+function buildNextSettingsDoc(current, updatedFields, updatedBy = 'admin') {
   const nextVersion = (current.version || 0) + 1;
   const nextUpdatedAt = new Date().toISOString();
 
@@ -343,7 +438,7 @@ export function saveSiteSettings(updatedFields, updatedBy = 'admin') {
     devPerformance: mergedDevPerf
   };
 
-  const newDoc = {
+  return {
     version: nextVersion,
     updatedAt: nextUpdatedAt,
     updatedBy: updatedBy || 'admin',
@@ -360,28 +455,116 @@ export function saveSiteSettings(updatedFields, updatedBy = 'admin') {
       ? updatedFields.customBackgrounds
       : (current.customBackgrounds || [])
   };
+}
+
+/**
+ * Synchronous write of global site settings to local disk with asynchronous broadcast to shared KV
+ */
+export function saveSiteSettingsSync(updatedFields, updatedBy = 'admin') {
+  const current = getSiteSettings();
+  const newDoc = buildNextSettingsDoc(current, updatedFields, updatedBy);
 
   inMemorySettingsCache = newDoc;
-  const jsonString = JSON.stringify(newDoc, null, 2);
+  lastKVSyncTime = Date.now();
+  writeSettingsToDisk(newDoc);
 
-  // Write to filesystem with serverless fallback
-  try {
-    const targetTemp = IS_SERVERLESS ? TMP_TEMP_FILE : TEMP_FILE;
-    const targetDest = IS_SERVERLESS ? TMP_SETTINGS_FILE : SETTINGS_FILE;
-
-    fs.writeFileSync(targetTemp, jsonString, 'utf8');
-    fs.renameSync(targetTemp, targetDest);
-
-    if (!IS_SERVERLESS && fs.existsSync(SETTINGS_FILE)) {
-      try {
-        fs.copyFileSync(SETTINGS_FILE, BACKUP_FILE);
-      } catch (bErr) {
-        console.warn('Could not create backup of settings file:', bErr);
-      }
-    }
-  } catch (fsErr) {
-    console.warn('[STORAGE] Could not write to disk (serverless read-only mode). Saved to memory cache:', fsErr.message);
+  if (isSharedKVConfigured()) {
+    kvStore.set('site_settings', newDoc).catch((err) => {
+      console.warn('[STORAGE] Async write to shared KV store failed:', err.message);
+    });
   }
 
   return newDoc;
+}
+
+// In-process lock chain to serialize concurrent updates within the same process
+let inProcessLock = Promise.resolve();
+
+function withInProcessLock(fn) {
+  const next = inProcessLock.then(fn, fn);
+  inProcessLock = next.catch(() => {});
+  return next;
+}
+
+/**
+ * Atomically write global site settings with concurrency control:
+ * 1. In-process mutex queue prevents simultaneous interleaved execution.
+ * 2. Cross-instance distributed lock via Redis SET NX EX.
+ * 3. Optimistic concurrency control (expectedVersion validation).
+ * 4. Strict fail-closed persistence (does NOT report success unless shared KV write succeeds).
+ */
+export async function saveSiteSettings(updatedFields, updatedBy = 'admin') {
+  return withInProcessLock(async () => {
+    let lockToken = null;
+
+    if (isSharedKVConfigured()) {
+      try {
+        lockToken = await kvStore.acquireLock('lock:site_settings', 4, 6, 50);
+      } catch (lockErr) {
+        if (lockErr.code === 'CONCURRENT_UPDATE_CONFLICT') {
+          throw lockErr;
+        }
+        const writeErr = new Error('Failed to acquire lock: authoritative shared KV store is unavailable.');
+        writeErr.status = 503;
+        writeErr.code = 'KV_WRITE_FAILED';
+        writeErr.originalError = lockErr;
+        throw writeErr;
+      }
+    }
+
+    try {
+      // 1. Fetch current settings inside the lock to ensure latest version
+      const current = await getSiteSettingsAsync();
+
+      // 2. Concurrency check: optimistic locking if client provided expectedVersion
+      if (typeof updatedFields.expectedVersion === 'number') {
+        if (current.version !== updatedFields.expectedVersion) {
+          const conflictErr = new Error(
+            `Settings conflict: Current version is ${current.version}, but update was based on version ${updatedFields.expectedVersion}. Please reload latest settings before saving.`
+          );
+          conflictErr.status = 409;
+          conflictErr.code = 'VERSION_CONFLICT';
+          throw conflictErr;
+        }
+      }
+
+      // 3. Build new version document
+      const newDoc = buildNextSettingsDoc(current, updatedFields, updatedBy);
+
+      // 4. Persist to shared authoritative KV store if configured
+      if (isSharedKVConfigured()) {
+        try {
+          const writeSuccess = await kvStore.set('site_settings', newDoc);
+          if (!writeSuccess) {
+            const writeErr = new Error('Failed to persist settings to authoritative shared KV store.');
+            writeErr.status = 503;
+            writeErr.code = 'KV_WRITE_FAILED';
+            throw writeErr;
+          }
+        } catch (err) {
+          console.error('[STORAGE CRITICAL] Authoritative KV write failed:', err.message);
+          const writeErr = new Error('Failed to persist settings to authoritative shared KV store.');
+          writeErr.status = 503;
+          writeErr.code = 'KV_WRITE_FAILED';
+          writeErr.originalError = err;
+          throw writeErr;
+        }
+      }
+
+      // 5. Update local memory and disk cache ONLY after shared write succeeds
+      inMemorySettingsCache = newDoc;
+      lastKVSyncTime = Date.now();
+      writeSettingsToDisk(newDoc);
+
+      return newDoc;
+    } finally {
+      if (lockToken && isSharedKVConfigured()) {
+        try {
+          await kvStore.releaseLock('lock:site_settings', lockToken);
+        } catch (releaseErr) {
+          console.warn('[STORAGE] Failed to release lock:', releaseErr.message);
+        }
+      }
+    }
+  });
 }

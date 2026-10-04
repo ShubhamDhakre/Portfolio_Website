@@ -142,10 +142,14 @@ export default function EasterEggModal({ isOpen, onClose, onOpenControlCenter })
             <span className="prompt-symbol">&gt;</span>
             <input
               ref={inputRef}
+              id="developer-terminal-input"
+              name="terminal-command"
               type="text"
               value={commandInput}
               onChange={(e) => setCommandInput(e.target.value)}
               placeholder="type a command (whoami, status, current_focus, exit)..."
+              aria-label="Developer terminal command input"
+              autoComplete="off"
               className="console-input"
               autoFocus
             />

@@ -52,7 +52,8 @@ export default function CustomCursor({ cursorEnabled = true }) {
     let currentX = -100;
     let currentY = -100;
     let rafId = null;
-    let hasMoved = false;
+    let lastCssX = -9999;
+    let lastCssY = -9999;
 
     const animateCursor = () => {
       // Smooth lerp tracking
@@ -63,16 +64,22 @@ export default function CustomCursor({ cursorEnabled = true }) {
         cursorRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
       }
 
+      // Coalesce ambient spotlight CSS variables smoothly in RAF instead of raw mouse event
+      const roundX = Math.round(targetX);
+      const roundY = Math.round(targetY);
+      if (roundX !== lastCssX || roundY !== lastCssY) {
+        lastCssX = roundX;
+        lastCssY = roundY;
+        document.documentElement.style.setProperty('--mouse-x', `${roundX}px`);
+        document.documentElement.style.setProperty('--mouse-y', `${roundY}px`);
+      }
+
       rafId = requestAnimationFrame(animateCursor);
     };
 
     const handleMouseMove = (e) => {
       targetX = e.clientX;
       targetY = e.clientY;
-
-      // Update ambient spotlight CSS variables smoothly on cursor move
-      document.documentElement.style.setProperty('--mouse-x', `${Math.round(targetX)}px`);
-      document.documentElement.style.setProperty('--mouse-y', `${Math.round(targetY)}px`);
 
       if (!hasMoved) {
         hasMoved = true;

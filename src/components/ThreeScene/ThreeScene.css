@@ -23,6 +23,12 @@
   cursor: grabbing;
 }
 
+.three-scene-container:focus-visible {
+  outline: 2px solid var(--accent-primary, #6D5BA6);
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
 .three-scene-container canvas {
   width: 100% !important;
   height: 100% !important;

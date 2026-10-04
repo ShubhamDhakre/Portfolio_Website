@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import profilePhoto from '../../assets/profile.jpg';
+import profilePhoto from '../../assets/profile.webp';
 import './About.css';
 
 /**
@@ -162,9 +162,10 @@ function About({ onStateChange }) {
                   src={profilePhoto}
                   alt="Shubham Dhakre"
                   className="about-profile-photo"
-                  width="1024"
-                  height="1024"
+                  width="600"
+                  height="600"
                   loading="lazy"
+                  decoding="async"
                 />
 
                 {/* Edge Vignette & Blend Layer */}
