@@ -17,6 +17,28 @@ export const DEFAULT_DEV_PERFORMANCE = {
   showViewport: true,
 };
 
+export const DEFAULT_SCROLL_REVEAL = {
+  enabled: true,
+  style: 'fade-up', // 'fade-up' | 'fade-in' | 'slide-up' | 'subtle-scale'
+  duration: 650, // ms (300 to 1500)
+  staggerDelay: 100, // ms (0 to 300)
+  distance: 24, // px (8 to 60)
+  threshold: 0.1, // (0.0 to 0.5)
+  replay: false, // boolean
+};
+
+export const DEFAULT_CONTACT_TILT = {
+  enabled: true,
+  maxRotationX: 12, // deg (2 to 30)
+  maxRotationY: 12, // deg (2 to 30)
+  perspective: 1000, // px (500 to 2500)
+  speed: 400, // ms (100 to 1000)
+  returnSpeed: 600, // ms (200 to 1500)
+  hoverScale: 1.02, // (1.00 to 1.10)
+  lighting: true, // boolean
+  lightingIntensity: 0.35, // (0.1 to 0.8)
+};
+
 export const DEFAULT_PERFORMANCE_CONFIG = {
   performanceMode: 'BALANCED', // 'EXTREME_SMOOTH' | 'SMOOTH' | 'BALANCED' | 'HIGH_QUALITY' | 'EXTREME_QUALITY' | 'AUTO'
   threeEnabled: true,
@@ -35,6 +57,8 @@ export const DEFAULT_PERFORMANCE_CONFIG = {
   renderScale: 'AUTO', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
   perfMonitorEnabled: false,
   devPerformance: { ...DEFAULT_DEV_PERFORMANCE },
+  scrollReveal: { ...DEFAULT_SCROLL_REVEAL },
+  contactTilt: { ...DEFAULT_CONTACT_TILT },
 };
 
 export const PERFORMANCE_MODES = {

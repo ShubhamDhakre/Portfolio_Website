@@ -54,22 +54,113 @@ section {
   box-sizing: border-box;
 }
 
-/* Scroll Reveal Effect using CSS transitions */
+/* Scroll Reveal Dynamic Design System */
+:root {
+  --reveal-duration: 650ms;
+  --reveal-distance: 24px;
+  --reveal-stagger-delay: 100ms;
+  --reveal-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .scroll-reveal {
   opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1),
-              transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+  transition-property: opacity, transform;
+  transition-duration: var(--reveal-duration, 650ms);
+  transition-timing-function: var(--reveal-timing-function, cubic-bezier(0.16, 1, 0.3, 1));
+  will-change: opacity, transform;
 }
 
+/* Style: fade-up (default) */
+:root[data-reveal-style="fade-up"] .scroll-reveal,
+.scroll-reveal:not([data-style]),
+.scroll-reveal[data-style="fade-up"] {
+  transform: translateY(var(--reveal-distance, 24px));
+}
+
+/* Style: fade-in */
+:root[data-reveal-style="fade-in"] .scroll-reveal,
+.scroll-reveal[data-style="fade-in"] {
+  transform: none;
+}
+
+/* Style: slide-up */
+:root[data-reveal-style="slide-up"] .scroll-reveal,
+.scroll-reveal[data-style="slide-up"] {
+  transform: translateY(calc(var(--reveal-distance, 24px) * 1.6));
+}
+
+/* Style: subtle-scale */
+:root[data-reveal-style="subtle-scale"] .scroll-reveal,
+.scroll-reveal[data-style="subtle-scale"] {
+  transform: scale(0.96) translateY(calc(var(--reveal-distance, 24px) * 0.5));
+}
+
+/* Revealed State */
 .scroll-reveal.is-revealed {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
-/* Prefers-reduced-motion fallback */
+/* Staggered Child Element Transitions */
+.scroll-reveal .project-window-panel,
+.scroll-reveal .skill-category-card,
+.scroll-reveal .lab-tab-btn,
+.scroll-reveal .about-profile-card,
+.scroll-reveal .about-narrative-card,
+.scroll-reveal .reveal-stagger-child {
+  opacity: 0;
+  transform: translateY(calc(var(--reveal-distance, 24px) * 0.6));
+  transition: opacity var(--reveal-duration, 650ms) var(--reveal-timing-function, cubic-bezier(0.16, 1, 0.3, 1)),
+              transform var(--reveal-duration, 650ms) var(--reveal-timing-function, cubic-bezier(0.16, 1, 0.3, 1));
+  will-change: opacity, transform;
+}
+
+/* Stagger delays across sibling cards */
+.scroll-reveal .project-window-panel:nth-child(1),
+.scroll-reveal .skill-category-card:nth-child(1),
+.scroll-reveal .reveal-stagger-child:nth-child(1) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 0); }
+
+.scroll-reveal .project-window-panel:nth-child(2),
+.scroll-reveal .skill-category-card:nth-child(2),
+.scroll-reveal .reveal-stagger-child:nth-child(2) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 1); }
+
+.scroll-reveal .project-window-panel:nth-child(3),
+.scroll-reveal .skill-category-card:nth-child(3),
+.scroll-reveal .reveal-stagger-child:nth-child(3) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 2); }
+
+.scroll-reveal .project-window-panel:nth-child(4),
+.scroll-reveal .skill-category-card:nth-child(4),
+.scroll-reveal .reveal-stagger-child:nth-child(4) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 3); }
+
+.scroll-reveal .project-window-panel:nth-child(5),
+.scroll-reveal .skill-category-card:nth-child(5),
+.scroll-reveal .reveal-stagger-child:nth-child(5) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 4); }
+
+.scroll-reveal .project-window-panel:nth-child(6),
+.scroll-reveal .skill-category-card:nth-child(6),
+.scroll-reveal .reveal-stagger-child:nth-child(6) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 5); }
+
+.scroll-reveal.is-revealed .project-window-panel,
+.scroll-reveal.is-revealed .skill-category-card,
+.scroll-reveal.is-revealed .lab-tab-btn,
+.scroll-reveal.is-revealed .about-profile-card,
+.scroll-reveal.is-revealed .about-narrative-card,
+.scroll-reveal.is-revealed .reveal-stagger-child {
+  opacity: 1;
+  transform: none;
+}
+
+/* Fallback: Disabled or Reduced Motion */
+body.scroll-reveal-disabled .scroll-reveal,
+body.scroll-reveal-disabled .scroll-reveal * {
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .scroll-reveal {
+  .scroll-reveal,
+  .scroll-reveal * {
     opacity: 1 !important;
     transform: none !important;
     transition: none !important;

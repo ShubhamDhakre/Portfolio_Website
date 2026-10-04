@@ -32,7 +32,29 @@ export const DEFAULT_DEV_PERFORMANCE = {
   showViewport: true,
 };
 
-const DEFAULT_GLOBAL = {
+export const DEFAULT_SCROLL_REVEAL = {
+  enabled: true,
+  style: 'fade-up', // 'fade-up' | 'fade-in' | 'slide-up' | 'subtle-scale'
+  duration: 650, // ms
+  staggerDelay: 100, // ms
+  distance: 24, // px
+  threshold: 0.1, // float
+  replay: false, // boolean
+};
+
+export const DEFAULT_CONTACT_TILT = {
+  enabled: true,
+  maxRotationX: 12, // deg
+  maxRotationY: 12, // deg
+  perspective: 1000, // px
+  speed: 400, // ms
+  returnSpeed: 600, // ms
+  hoverScale: 1.02, // multiplier
+  lighting: true, // boolean
+  lightingIntensity: 0.35, // float
+};
+
+export const DEFAULT_GLOBAL = {
   theme: 'default', // 'default' | 'technical' | 'nature' | 'minimal' | 'aurora' | 'monochrome' | 'custom'
   customThemeName: '',
   background: 'digital-web', // 'digital-web' | 'neural-flow' | 'data-stream' | 'organic-flow' | 'starfield' | 'digital-code-flow' | 'custom'
@@ -53,6 +75,8 @@ const DEFAULT_GLOBAL = {
   animationQuality: 'MEDIUM', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
   renderScale: 'AUTO', // 'LOW' | 'MEDIUM' | 'HIGH' | 'AUTO'
   devPerformance: { ...DEFAULT_DEV_PERFORMANCE },
+  scrollReveal: { ...DEFAULT_SCROLL_REVEAL },
+  contactTilt: { ...DEFAULT_CONTACT_TILT },
 };
 
 const DEFAULT_SETTINGS = {
@@ -186,6 +210,48 @@ export function validateSettingsPayload(payload) {
         };
       } else {
         errors.push('devPerformance must be an object');
+      }
+    }
+
+    // Scroll Reveal Animation validation
+    if (s.scrollReveal !== undefined) {
+      if (typeof s.scrollReveal === 'object' && s.scrollReveal !== null) {
+        const sr = s.scrollReveal;
+        const allowedStyles = ['fade-up', 'fade-in', 'slide-up', 'subtle-scale'];
+        const chosenStyle = allowedStyles.includes(String(sr.style).toLowerCase())
+          ? String(sr.style).toLowerCase()
+          : 'fade-up';
+        sanitized.global.scrollReveal = {
+          enabled: sr.enabled !== undefined ? Boolean(sr.enabled) : true,
+          style: chosenStyle,
+          duration: Math.min(Math.max(Number(sr.duration) || 650, 100), 3000),
+          staggerDelay: Math.min(Math.max(Number(sr.staggerDelay) || 0, 0), 1000),
+          distance: Math.min(Math.max(Number(sr.distance) || 24, 0), 200),
+          threshold: Math.min(Math.max(Number(sr.threshold) || 0.1, 0.0), 1.0),
+          replay: Boolean(sr.replay),
+        };
+      } else {
+        errors.push('scrollReveal must be an object');
+      }
+    }
+
+    // Contact 3D Glass Tilt validation (strictly Contact component only)
+    if (s.contactTilt !== undefined) {
+      if (typeof s.contactTilt === 'object' && s.contactTilt !== null) {
+        const ct = s.contactTilt;
+        sanitized.global.contactTilt = {
+          enabled: ct.enabled !== undefined ? Boolean(ct.enabled) : true,
+          maxRotationX: Math.min(Math.max(Number(ct.maxRotationX) || 12, 1), 45),
+          maxRotationY: Math.min(Math.max(Number(ct.maxRotationY) || 12, 1), 45),
+          perspective: Math.min(Math.max(Number(ct.perspective) || 1000, 300), 3000),
+          speed: Math.min(Math.max(Number(ct.speed) || 400, 50), 2000),
+          returnSpeed: Math.min(Math.max(Number(ct.returnSpeed) || 600, 100), 3000),
+          hoverScale: Math.min(Math.max(Number(ct.hoverScale) || 1.02, 1.0), 1.25),
+          lighting: ct.lighting !== undefined ? Boolean(ct.lighting) : true,
+          lightingIntensity: Math.min(Math.max(typeof ct.lightingIntensity === 'number' ? ct.lightingIntensity : (Number(ct.lightingIntensity) || 0.35), 0.0), 1.0),
+        };
+      } else {
+        errors.push('contactTilt must be an object');
       }
     }
 
@@ -345,14 +411,24 @@ export function validateAuthoritativeSettingsDoc(doc) {
 /**
  * Merge partial/raw settings payload with complete defaults
  */
-function normalizeSettingsDoc(parsed) {
+export function normalizeSettingsDoc(parsed) {
   const existingDevPerf = (parsed.global || parsed.settings || {})?.devPerformance;
+  const existingScrollReveal = (parsed.global || parsed.settings || {})?.scrollReveal;
+  const existingContactTilt = (parsed.global || parsed.settings || {})?.contactTilt;
   const globalBlock = {
     ...DEFAULT_GLOBAL,
     ...(parsed.global || parsed.settings || {}),
     devPerformance: {
       ...DEFAULT_DEV_PERFORMANCE,
       ...(existingDevPerf || {})
+    },
+    scrollReveal: {
+      ...DEFAULT_SCROLL_REVEAL,
+      ...(existingScrollReveal || {})
+    },
+    contactTilt: {
+      ...DEFAULT_CONTACT_TILT,
+      ...(existingContactTilt || {})
     }
   };
   return {

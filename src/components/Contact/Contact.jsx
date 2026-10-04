@@ -1,20 +1,103 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { DEFAULT_CONTACT_TILT } from '../../utils/performanceConfig';
 import './Contact.css';
 
 /**
  * Contact
  * Direct reach-out section with placeholders for Email, GitHub, and LinkedIn.
  * Features a one-click copy email micro-interaction and clean developer cues.
+ * Strictly scoped 3D Glass Tilt interaction on the main Contact card.
  */
-function Contact() {
+function Contact({ tiltSettings = DEFAULT_CONTACT_TILT }) {
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef(null);
+  const cardRef = useRef(null);
+  const glareRef = useRef(null);
+  const rafIdRef = useRef(null);
 
   useEffect(() => {
     return () => {
       if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
     };
   }, []);
+
+  // Cursor-responsive 3D Glass Tilt interaction (strictly scoped to this card)
+  useEffect(() => {
+    const card = cardRef.current;
+    const glare = glareRef.current;
+    if (!card) return;
+
+    const isEnabled = tiltSettings?.enabled !== false;
+    const maxRotX = Math.min(Math.max(Number(tiltSettings?.maxRotationX) || 12, 1), 35);
+    const maxRotY = Math.min(Math.max(Number(tiltSettings?.maxRotationY) || 12, 1), 35);
+    const perspective = Math.min(Math.max(Number(tiltSettings?.perspective) || 1000, 300), 2500);
+    const speed = Math.min(Math.max(Number(tiltSettings?.speed) || 400, 50), 2000);
+    const returnSpeed = Math.min(Math.max(Number(tiltSettings?.returnSpeed) || 600, 100), 2500);
+    const hoverScale = Math.min(Math.max(Number(tiltSettings?.hoverScale) || 1.02, 1.0), 1.15);
+    const lighting = tiltSettings?.lighting !== false;
+    const rawIntensity = tiltSettings?.lightingIntensity;
+    const lightingIntensity = Math.min(Math.max(typeof rawIntensity === 'number' ? rawIntensity : (Number(rawIntensity) || 0.35), 0.0), 1.0);
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const canHover = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+    if (!isEnabled || prefersReducedMotion || !canHover) {
+      card.style.transform = '';
+      card.style.transition = '';
+      if (glare) glare.style.opacity = '0';
+      return;
+    }
+
+    const onPointerEnter = () => {
+      card.style.willChange = 'transform';
+      card.style.transition = `transform ${speed}ms cubic-bezier(0.03, 0.98, 0.52, 0.99)`;
+    };
+
+    const onPointerMove = (e) => {
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = requestAnimationFrame(() => {
+        const rect = card.getBoundingClientRect();
+        if (rect.width <= 0 || rect.height <= 0) return;
+        const normX = (e.clientX - rect.left) / rect.width;
+        const normY = (e.clientY - rect.top) / rect.height;
+        const px = (normX - 0.5) * 2;
+        const py = (normY - 0.5) * 2;
+        const rotX = -py * maxRotX;
+        const rotY = px * maxRotY;
+
+        card.style.transform = `perspective(${perspective}px) rotateX(${rotX.toFixed(2)}deg) rotateY(${rotY.toFixed(2)}deg) scale3d(${hoverScale}, ${hoverScale}, ${hoverScale})`;
+
+        if (lighting && glare) {
+          glare.style.opacity = String(lightingIntensity);
+          glare.style.setProperty('--glare-x', `${(normX * 100).toFixed(1)}%`);
+          glare.style.setProperty('--glare-y', `${(normY * 100).toFixed(1)}%`);
+        }
+      });
+    };
+
+    const onPointerLeave = () => {
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      card.style.transition = `transform ${returnSpeed}ms cubic-bezier(0.16, 1, 0.3, 1), border-color var(--transition-normal), box-shadow var(--transition-normal)`;
+      card.style.transform = `perspective(${perspective}px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+      if (glare) {
+        glare.style.opacity = '0';
+      }
+    };
+
+    card.addEventListener('pointerenter', onPointerEnter);
+    card.addEventListener('pointermove', onPointerMove);
+    card.addEventListener('pointerleave', onPointerLeave);
+
+    return () => {
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      card.removeEventListener('pointerenter', onPointerEnter);
+      card.removeEventListener('pointermove', onPointerMove);
+      card.removeEventListener('pointerleave', onPointerLeave);
+      card.style.transform = '';
+      card.style.transition = '';
+      if (glare) glare.style.opacity = '0';
+    };
+  }, [tiltSettings]);
 
   const contactInfo = {
     email: "ssdhakre93@gmail.com", // Placeholder: replace with your actual email
@@ -71,7 +154,11 @@ function Contact() {
         <span className="section-component-pill">&lt;ContactInterface /&gt;</span>
       </div>
 
-      <div className="contact-card">
+      <div
+        className={`contact-card contact-tilt-card ${tiltSettings?.enabled === false ? 'tilt-disabled' : ''}`}
+        ref={cardRef}
+      >
+        <div className="contact-tilt-glare" ref={glareRef} />
         <div className="contact-badge">
           <span className="badge-dot" />
           COMMUNICATION // OPEN TO CONNECT

@@ -20,12 +20,23 @@ function getLocalCache() {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) return { settings: DEFAULT_PERFORMANCE_CONFIG, content: DEFAULT_CONTENT, isPreviewActive: false, version: null, updatedAt: null };
     const parsed = JSON.parse(raw);
+    const isPreview = Boolean(parsed.isPreviewActive || parsed.previewMode);
     const local = parsed.localSettings || {};
     const notesObj = parsed.notes && typeof parsed.notes === 'object' ? parsed.notes : {};
-    const isPreview = Boolean(parsed.previewMode);
-    const cachedSettings = !isPreview && parsed.settings
+    const rawSettings = !isPreview && parsed.settings
       ? { ...DEFAULT_PERFORMANCE_CONFIG, ...parsed.settings }
       : { ...DEFAULT_PERFORMANCE_CONFIG, ...parsed, ...local };
+    const cachedSettings = {
+      ...rawSettings,
+      scrollReveal: {
+        ...DEFAULT_PERFORMANCE_CONFIG.scrollReveal,
+        ...(rawSettings.scrollReveal || {})
+      },
+      contactTilt: {
+        ...DEFAULT_PERFORMANCE_CONFIG.contactTilt,
+        ...(rawSettings.contactTilt || {})
+      }
+    };
     return {
       settings: cachedSettings,
       content: { ...DEFAULT_CONTENT, ...(parsed.content || {}), ...notesObj },

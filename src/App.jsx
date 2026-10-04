@@ -16,7 +16,7 @@ import CustomCursor from './components/CustomCursor/CustomCursor';
 import WebSystemBackground from './components/WebSystemBackground/WebSystemBackground';
 import PerformanceMonitorHUD from './components/PerformanceMonitor/PerformanceMonitorHUD';
 import { useGlobalSiteSettings } from './hooks/useGlobalSiteSettings';
-import { DEFAULT_DEV_PERFORMANCE } from './utils/performanceConfig';
+import { DEFAULT_DEV_PERFORMANCE, DEFAULT_SCROLL_REVEAL, DEFAULT_CONTACT_TILT } from './utils/performanceConfig';
 
 // Lazy-load hidden Easter Egg console and Private Control Layer to keep initial bundle lean
 const EasterEggModal = React.lazy(() => import('./components/EasterEgg/EasterEggModal'));
@@ -151,24 +151,52 @@ export default function App() {
     };
   }, []);
 
-  // IntersectionObserver for scroll-reveal effects
+  // Dynamic Scroll Reveal Animation Engine
   useEffect(() => {
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) return;
+    const root = document.documentElement;
+    const body = document.body;
+    const srConfig = perfSettings?.scrollReveal || DEFAULT_SCROLL_REVEAL;
+    const isEnabled = srConfig.enabled !== false && perfSettings?.scrollEffectsEnabled !== false;
+    const style = srConfig.style || 'fade-up';
+    const duration = Number(srConfig.duration) || 650;
+    const staggerDelay = Number(srConfig.staggerDelay) || 100;
+    const distance = Number(srConfig.distance) || 24;
+    const threshold = Math.min(Math.max(Number(srConfig.threshold) || 0.1, 0.0), 1.0);
+    const replay = Boolean(srConfig.replay);
 
-    const observerCallback = (entries, observer) => {
+    root.style.setProperty('--reveal-duration', `${duration}ms`);
+    root.style.setProperty('--reveal-distance', `${distance}px`);
+    root.style.setProperty('--reveal-stagger-delay', `${staggerDelay}ms`);
+    root.setAttribute('data-reveal-style', style);
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (!isEnabled || prefersReducedMotion) {
+      body.classList.add('scroll-reveal-disabled');
+      const elements = document.querySelectorAll('.scroll-reveal');
+      elements.forEach((el) => el.classList.add('is-revealed'));
+      return;
+    }
+
+    body.classList.remove('scroll-reveal-disabled');
+
+    const observerCallback = (entries, obs) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           entry.target.classList.add('is-revealed');
-          observer.unobserve(entry.target);
+          if (!replay) {
+            obs.unobserve(entry.target);
+          }
+        } else if (replay) {
+          entry.target.classList.remove('is-revealed');
         }
       });
     };
 
     const observer = new IntersectionObserver(observerCallback, {
       root: null,
-      rootMargin: '0px 0px -50px 0px',
-      threshold: 0.08,
+      rootMargin: '0px 0px -40px 0px',
+      threshold,
     });
 
     const revealElements = document.querySelectorAll('.scroll-reveal');
@@ -178,7 +206,17 @@ export default function App() {
       revealElements.forEach((el) => observer.unobserve(el));
       observer.disconnect();
     };
-  }, []);
+  }, [
+    perfSettings?.scrollReveal,
+    perfSettings?.scrollReveal?.enabled,
+    perfSettings?.scrollReveal?.style,
+    perfSettings?.scrollReveal?.duration,
+    perfSettings?.scrollReveal?.staggerDelay,
+    perfSettings?.scrollReveal?.distance,
+    perfSettings?.scrollReveal?.threshold,
+    perfSettings?.scrollReveal?.replay,
+    perfSettings?.scrollEffectsEnabled,
+  ]);
 
   // Performance Styles Synchronization (Glass quality, Scroll FX, Animations, Mouse FX)
   useEffect(() => {
@@ -277,7 +315,7 @@ export default function App() {
         </div>
 
         <div className="scroll-reveal">
-          <Contact />
+          <Contact tiltSettings={perfSettings?.contactTilt || DEFAULT_CONTACT_TILT} />
         </div>
       </main>
 

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   DEFAULT_PERFORMANCE_CONFIG,
   DEFAULT_DEV_PERFORMANCE,
+  DEFAULT_SCROLL_REVEAL,
+  DEFAULT_CONTACT_TILT,
   PERFORMANCE_MODES
 } from '../../utils/performanceConfig';
 import {
@@ -77,6 +79,8 @@ function loadPreferences() {
     const local = parsed.localSettings || {};
     const notesObj = parsed.notes && typeof parsed.notes === 'object' ? parsed.notes : {};
     const devPerf = local.devPerformance || parsed.devPerformance || parsed.global?.devPerformance || DEFAULT_DEV_PERFORMANCE;
+    const sr = local.scrollReveal || parsed.scrollReveal || parsed.global?.scrollReveal;
+    const ct = local.contactTilt || parsed.contactTilt || parsed.global?.contactTilt;
     return {
       ...DEFAULT_PREFERENCES,
       ...parsed,
@@ -84,6 +88,14 @@ function loadPreferences() {
       devPerformance: {
         ...DEFAULT_DEV_PERFORMANCE,
         ...(devPerf || {})
+      },
+      scrollReveal: {
+        ...DEFAULT_SCROLL_REVEAL,
+        ...(sr || {})
+      },
+      contactTilt: {
+        ...DEFAULT_CONTACT_TILT,
+        ...(ct || {})
       },
       notes: notesObj.notes || parsed.notes || parsed.content?.notes || DEFAULT_PREFERENCES.notes,
       currentFocus: notesObj.currentFocus || parsed.currentFocus || parsed.content?.currentFocus || DEFAULT_PREFERENCES.currentFocus,
@@ -121,7 +133,9 @@ function savePreferences(prefs, previewMode = false) {
         customCursor: prefs.cursorEnabled !== false,
         animationQuality: prefs.animationQuality || 'MEDIUM',
         renderScale: prefs.renderScale || 'AUTO',
-        devPerformance: prefs.devPerformance || DEFAULT_DEV_PERFORMANCE
+        devPerformance: prefs.devPerformance || DEFAULT_DEV_PERFORMANCE,
+        scrollReveal: prefs.scrollReveal || DEFAULT_SCROLL_REVEAL,
+        contactTilt: prefs.contactTilt || DEFAULT_CONTACT_TILT
       },
       notes: {
         notes: prefs.notes || '',
@@ -164,11 +178,23 @@ export default function PrivateControlLayer({
       ? { ...DEFAULT_DEV_PERFORMANCE, ...serverDevPerf }
       : (loaded.devPerformance || DEFAULT_DEV_PERFORMANCE);
 
+    const serverScrollReveal = effectiveGlobal.scrollReveal || globalSettings?.scrollReveal || globalSettings?.global?.scrollReveal;
+    const initialScrollReveal = serverScrollReveal
+      ? { ...DEFAULT_SCROLL_REVEAL, ...serverScrollReveal }
+      : (loaded.scrollReveal || DEFAULT_SCROLL_REVEAL);
+
+    const serverContactTilt = effectiveGlobal.contactTilt || globalSettings?.contactTilt || globalSettings?.global?.contactTilt;
+    const initialContactTilt = serverContactTilt
+      ? { ...DEFAULT_CONTACT_TILT, ...serverContactTilt }
+      : (loaded.contactTilt || DEFAULT_CONTACT_TILT);
+
     const merged = {
       ...loaded,
       ...effectiveGlobal,
       theme: baseTheme,
       devPerformance: initialDevPerf,
+      scrollReveal: initialScrollReveal,
+      contactTilt: initialContactTilt,
       previewMode: isPreview
     };
 
@@ -665,6 +691,26 @@ export default function PrivateControlLayer({
             showGlassBlur: prefs.devPerformance?.showGlassBlur !== false,
             showScrollFX: prefs.devPerformance?.showScrollFX !== false,
             showViewport: prefs.devPerformance?.showViewport !== false,
+          },
+          scrollReveal: {
+            enabled: prefs.scrollReveal?.enabled !== false,
+            style: prefs.scrollReveal?.style || 'fade-up',
+            duration: Number(prefs.scrollReveal?.duration) || 650,
+            staggerDelay: Number(prefs.scrollReveal?.staggerDelay) || 100,
+            distance: Number(prefs.scrollReveal?.distance) || 24,
+            threshold: Number(prefs.scrollReveal?.threshold) || 0.1,
+            replay: Boolean(prefs.scrollReveal?.replay),
+          },
+          contactTilt: {
+            enabled: prefs.contactTilt?.enabled !== false,
+            maxRotationX: Number(prefs.contactTilt?.maxRotationX) || 12,
+            maxRotationY: Number(prefs.contactTilt?.maxRotationY) || 12,
+            perspective: Number(prefs.contactTilt?.perspective) || 1000,
+            speed: Number(prefs.contactTilt?.speed) || 400,
+            returnSpeed: Number(prefs.contactTilt?.returnSpeed) || 600,
+            hoverScale: Number(prefs.contactTilt?.hoverScale) || 1.02,
+            lighting: prefs.contactTilt?.lighting !== false,
+            lightingIntensity: typeof prefs.contactTilt?.lightingIntensity === 'number' ? prefs.contactTilt.lightingIntensity : (Number(prefs.contactTilt?.lightingIntensity) || 0.35),
           }
         },
         content: {
@@ -755,7 +801,9 @@ export default function PrivateControlLayer({
           customCursor: true,
           animationQuality: 'MEDIUM',
           renderScale: 'AUTO',
-          devPerformance: { ...DEFAULT_DEV_PERFORMANCE }
+          devPerformance: { ...DEFAULT_DEV_PERFORMANCE },
+          scrollReveal: { ...DEFAULT_SCROLL_REVEAL },
+          contactTilt: { ...DEFAULT_CONTACT_TILT }
         },
         content: {
           notes: prefs.notes || 'Refining liquid glass depth & 3D raycasting performance\nExperiment with client-side WebGL shader refraction next',
@@ -775,7 +823,9 @@ export default function PrivateControlLayer({
           const next = {
             ...prev,
             ...resetPayload.global,
-            devPerformance: { ...DEFAULT_DEV_PERFORMANCE }
+            devPerformance: { ...DEFAULT_DEV_PERFORMANCE },
+            scrollReveal: { ...DEFAULT_SCROLL_REVEAL },
+            contactTilt: { ...DEFAULT_CONTACT_TILT }
           };
           savePreferences(next, false);
           return next;
@@ -786,7 +836,7 @@ export default function PrivateControlLayer({
           localStorage.setItem('shubham_portfolio_theme', 'default');
           localStorage.removeItem('shubham_portfolio_theme_explicit');
         } catch {}
-        if (onPrefsChange) onPrefsChange({ ...resetPayload.global, devPerformance: { ...DEFAULT_DEV_PERFORMANCE } });
+        if (onPrefsChange) onPrefsChange({ ...resetPayload.global, devPerformance: { ...DEFAULT_DEV_PERFORMANCE }, scrollReveal: { ...DEFAULT_SCROLL_REVEAL }, contactTilt: { ...DEFAULT_CONTACT_TILT } });
         if (refreshGlobalSettings) refreshGlobalSettings();
 
         showToast(`GLOBAL WEBSITE SETTINGS RESET TO SAFE BASELINE (v${result.data.version})`, 'success', 4500);
@@ -856,6 +906,32 @@ export default function PrivateControlLayer({
     const stagedBg = (prefs.background || 'digital-web').toUpperCase();
     if (serverBg !== stagedBg) {
       changes.push({ label: 'BACKGROUND', from: serverBg, to: stagedBg, changed: true });
+    }
+
+    // Scroll Reveal differences
+    const serverSR = globalSettings?.scrollReveal || globalSettings?.global?.scrollReveal || DEFAULT_SCROLL_REVEAL;
+    const stagedSR = prefs.scrollReveal || DEFAULT_SCROLL_REVEAL;
+    const serverSREnabled = serverSR.enabled !== false ? 'ON' : 'OFF';
+    const stagedSREnabled = stagedSR.enabled !== false ? 'ON' : 'OFF';
+    if (serverSREnabled !== stagedSREnabled) {
+      changes.push({ label: 'SCROLL REVEAL', from: serverSREnabled, to: stagedSREnabled, changed: true });
+    }
+    if ((serverSR.style || 'fade-up') !== (stagedSR.style || 'fade-up')) {
+      changes.push({
+        label: 'REVEAL STYLE',
+        from: String(serverSR.style || 'fade-up').toUpperCase(),
+        to: String(stagedSR.style || 'fade-up').toUpperCase(),
+        changed: true
+      });
+    }
+
+    // Contact 3D Tilt differences
+    const serverCT = globalSettings?.contactTilt || globalSettings?.global?.contactTilt || DEFAULT_CONTACT_TILT;
+    const stagedCT = prefs.contactTilt || DEFAULT_CONTACT_TILT;
+    const serverCTEnabled = serverCT.enabled !== false ? 'ON' : 'OFF';
+    const stagedCTEnabled = stagedCT.enabled !== false ? 'ON' : 'OFF';
+    if (serverCTEnabled !== stagedCTEnabled) {
+      changes.push({ label: 'CONTACT 3D TILT', from: serverCTEnabled, to: stagedCTEnabled, changed: true });
     }
 
     return changes;
@@ -1117,6 +1193,111 @@ export default function PrivateControlLayer({
     }
   }, [terminalHistory, activeTab]);
 
+  // Scroll Reveal & Contact Tilt Interactive Preview State & Handlers
+  const [revealPreviewKey, setRevealPreviewKey] = useState(0);
+  const previewTiltRef = useRef(null);
+  const previewGlareRef = useRef(null);
+
+  const updateScrollReveal = (key, value) => {
+    setPrefs((prev) => {
+      const next = {
+        ...prev,
+        scrollReveal: {
+          ...DEFAULT_SCROLL_REVEAL,
+          ...(prev.scrollReveal || {}),
+          [key]: value
+        }
+      };
+      savePreferences(next, isPreviewActive);
+      return next;
+    });
+  };
+
+  const handleResetScrollReveal = () => {
+    setPrefs((prev) => {
+      const next = {
+        ...prev,
+        scrollReveal: { ...DEFAULT_SCROLL_REVEAL }
+      };
+      savePreferences(next, isPreviewActive);
+      return next;
+    });
+    setRevealPreviewKey((prev) => prev + 1);
+    showToast('SCROLL REVEAL RESET TO DEFAULTS', 'info');
+  };
+
+  const updateContactTilt = (key, value) => {
+    setPrefs((prev) => {
+      const next = {
+        ...prev,
+        contactTilt: {
+          ...DEFAULT_CONTACT_TILT,
+          ...(prev.contactTilt || {}),
+          [key]: value
+        }
+      };
+      savePreferences(next, isPreviewActive);
+      return next;
+    });
+  };
+
+  const handleResetContactTilt = () => {
+    setPrefs((prev) => {
+      const next = {
+        ...prev,
+        contactTilt: { ...DEFAULT_CONTACT_TILT }
+      };
+      savePreferences(next, isPreviewActive);
+      return next;
+    });
+    const card = previewTiltRef.current;
+    if (card) {
+      card.style.transform = '';
+      if (previewGlareRef.current) previewGlareRef.current.style.opacity = '0';
+    }
+    showToast('CONTACT 3D TILT RESET TO DEFAULTS', 'info');
+  };
+
+  const handlePreviewTiltMove = (e) => {
+    const card = previewTiltRef.current;
+    if (!card) return;
+    const ct = prefs.contactTilt || DEFAULT_CONTACT_TILT;
+    const rect = card.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const normX = (e.clientX - rect.left) / rect.width;
+    const normY = (e.clientY - rect.top) / rect.height;
+    const px = (normX - 0.5) * 2;
+    const py = (normY - 0.5) * 2;
+    const maxRotX = Number(ct.maxRotationX) || 12;
+    const maxRotY = Number(ct.maxRotationY) || 12;
+    const perspective = Number(ct.perspective) || 1000;
+    const hoverScale = Number(ct.hoverScale) || 1.02;
+    const speed = Number(ct.speed) || 400;
+
+    card.style.transition = `transform ${speed}ms cubic-bezier(0.03, 0.98, 0.52, 0.99)`;
+    card.style.transform = `perspective(${perspective}px) rotateX(${(-py * maxRotX).toFixed(2)}deg) rotateY(${(px * maxRotY).toFixed(2)}deg) scale3d(${hoverScale}, ${hoverScale}, ${hoverScale})`;
+
+    if (previewGlareRef.current && ct.lighting !== false) {
+      previewGlareRef.current.style.opacity = String(ct.lightingIntensity ?? 0.35);
+      previewGlareRef.current.style.setProperty('--glare-x', `${(normX * 100).toFixed(1)}%`);
+      previewGlareRef.current.style.setProperty('--glare-y', `${(normY * 100).toFixed(1)}%`);
+    }
+  };
+
+  const handlePreviewTiltLeave = () => {
+    const card = previewTiltRef.current;
+    if (!card) return;
+    const ct = prefs.contactTilt || DEFAULT_CONTACT_TILT;
+    const perspective = Number(ct.perspective) || 1000;
+    const returnSpeed = Number(ct.returnSpeed) || 600;
+
+    card.style.transition = `transform ${returnSpeed}ms cubic-bezier(0.16, 1, 0.3, 1)`;
+    card.style.transform = `perspective(${perspective}px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
+    if (previewGlareRef.current) {
+      previewGlareRef.current.style.opacity = '0';
+    }
+  };
+
   const devPerf = prefs.devPerformance || DEFAULT_DEV_PERFORMANCE;
 
   const renderGlobalWebsiteControl = () => (
@@ -1317,6 +1498,57 @@ export default function PrivateControlLayer({
         </div>
       </div>
 
+      {/* ANIMATION & 3D INTERACTION SUBSYSTEMS OVERVIEW */}
+      <div className="perf-rows-control-subcard">
+        <div className="subcard-header">
+          <span className="subcard-title">ANIMATION & 3D INTERACTION SYSTEMS</span>
+          <span className="subcard-desc">Modern scroll reveal effects and Contact 3D perspective glass tilt</span>
+        </div>
+        <div className="animation-subsystems-overview-grid">
+          <div className="subsystem-overview-card">
+            <div className="subsystem-card-top">
+              <span className="subsystem-title">SCROLL REVEAL ANIMATIONS</span>
+              <span className={`subsystem-badge ${(prefs.scrollReveal?.enabled !== false) ? 'active' : 'disabled'}`}>
+                {(prefs.scrollReveal?.enabled !== false) ? '● ACTIVE' : '○ DISABLED'}
+              </span>
+            </div>
+            <div className="subsystem-meta-row">
+              <span className="subsystem-meta-pill">Style: {String(prefs.scrollReveal?.style || 'fade-up').toUpperCase()}</span>
+              <span className="subsystem-meta-pill">{prefs.scrollReveal?.duration || 650}ms</span>
+              <span className="subsystem-meta-pill">Stagger: {prefs.scrollReveal?.staggerDelay || 100}ms</span>
+            </div>
+            <button
+              type="button"
+              className="btn-configure-subsystem"
+              onClick={() => setActiveTab('scroll-reveal')}
+            >
+              CONFIGURE SCROLL REVEAL ➔
+            </button>
+          </div>
+
+          <div className="subsystem-overview-card">
+            <div className="subsystem-card-top">
+              <span className="subsystem-title">CONTACT 3D GLASS TILT</span>
+              <span className={`subsystem-badge ${(prefs.contactTilt?.enabled !== false) ? 'active' : 'disabled'}`}>
+                {(prefs.contactTilt?.enabled !== false) ? '● ACTIVE' : '○ DISABLED'}
+              </span>
+            </div>
+            <div className="subsystem-meta-row">
+              <span className="subsystem-meta-pill">Scope: Contact Card Only</span>
+              <span className="subsystem-meta-pill">Tilt: ±{prefs.contactTilt?.maxRotationX || 12}°</span>
+              <span className="subsystem-meta-pill">Depth: {prefs.contactTilt?.perspective || 1000}px</span>
+            </div>
+            <button
+              type="button"
+              className="btn-configure-subsystem"
+              onClick={() => setActiveTab('contact-tilt')}
+            >
+              CONFIGURE CONTACT 3D TILT ➔
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Direct Actions (Section 8) */}
       <div className="global-actions-bar">
         <button
@@ -1349,6 +1581,453 @@ export default function PrivateControlLayer({
       </div>
     </div>
   );
+
+  // Dedicated Tab: Scroll Reveal Animations
+  const renderScrollRevealControl = () => {
+    const sr = prefs.scrollReveal || DEFAULT_SCROLL_REVEAL;
+    const isEnabled = sr.enabled !== false;
+    const style = sr.style || 'fade-up';
+    const duration = Number(sr.duration) || 650;
+    const staggerDelay = Number(sr.staggerDelay) || 100;
+    const distance = Number(sr.distance) || 24;
+    const threshold = Number(sr.threshold) || 0.1;
+    const replay = Boolean(sr.replay);
+
+    return (
+      <div className="private-section-card scroll-reveal-settings-card">
+        <div className="card-heading">
+          <div className="card-heading-left">
+            <span className="card-title">SCROLL REVEAL ANIMATIONS</span>
+            <span className="card-subtext">Fluid viewport-triggered entry animations across portfolio sections</span>
+          </div>
+          <button
+            type="button"
+            className="btn-reset-section"
+            onClick={handleResetScrollReveal}
+            title="Reset scroll reveal animation settings to safe defaults"
+          >
+            ↺ Reset Defaults
+          </button>
+        </div>
+
+        {/* Master Switch */}
+        <div className="control-item master-toggle-row">
+          <div className="control-title-desc">
+            <span className="control-label">Enable Scroll Reveal</span>
+            <span className="control-desc">Smoothly animate components into viewport as the user scrolls</span>
+          </div>
+          <button
+            type="button"
+            className={`toggle-pill-btn lg ${isEnabled ? 'on' : 'off'}`}
+            onClick={() => updateScrollReveal('enabled', !isEnabled)}
+          >
+            {isEnabled ? '● ENABLED' : '○ DISABLED'}
+          </button>
+        </div>
+
+        {/* Live Interactive Preview Box */}
+        <div className="reveal-preview-container">
+          <div className="preview-header">
+            <div className="preview-header-left">
+              <span className="preview-title">LIVE ANIMATION PREVIEW</span>
+              <span className="preview-sub">Simulating staggered viewport reveal sequence</span>
+            </div>
+            <button
+              type="button"
+              className="btn-trigger-preview"
+              onClick={() => setRevealPreviewKey((prev) => prev + 1)}
+              title="Re-play the reveal sequence with current settings"
+            >
+              ↻ Re-trigger Sequence
+            </button>
+          </div>
+          <div className="reveal-preview-viewport" key={revealPreviewKey}>
+            <div
+              className={`preview-demo-card demo-card-1 ${isEnabled ? 'active-reveal' : 'static'}`}
+              style={{
+                '--demo-duration': `${duration}ms`,
+                '--demo-distance': `${distance}px`,
+                '--demo-delay': '0ms',
+                '--demo-style': style,
+              }}
+            >
+              <div className="demo-badge">01 // HEADER</div>
+              <div className="demo-title">Component Block A</div>
+              <div className="demo-sub">Stagger +0ms</div>
+            </div>
+            <div
+              className={`preview-demo-card demo-card-2 ${isEnabled ? 'active-reveal' : 'static'}`}
+              style={{
+                '--demo-duration': `${duration}ms`,
+                '--demo-distance': `${distance}px`,
+                '--demo-delay': `${staggerDelay * 1}ms`,
+                '--demo-style': style,
+              }}
+            >
+              <div className="demo-badge">02 // CARD ITEM</div>
+              <div className="demo-title">Component Block B</div>
+              <div className="demo-sub">Stagger +{staggerDelay}ms</div>
+            </div>
+            <div
+              className={`preview-demo-card demo-card-3 ${isEnabled ? 'active-reveal' : 'static'}`}
+              style={{
+                '--demo-duration': `${duration}ms`,
+                '--demo-distance': `${distance}px`,
+                '--demo-delay': `${staggerDelay * 2}ms`,
+                '--demo-style': style,
+              }}
+            >
+              <div className="demo-badge">03 // SPEC ITEM</div>
+              <div className="demo-title">Component Block C</div>
+              <div className="demo-sub">Stagger +{staggerDelay * 2}ms</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Animation Style Selector */}
+        <div className="control-group-block">
+          <label className="field-label">ANIMATION STYLE</label>
+          <div className="style-segmented-picker">
+            {[
+              { id: 'fade-up', label: 'Fade Up', desc: 'Fade in with upward motion' },
+              { id: 'fade-in', label: 'Fade In', desc: 'Pure opacity dissolve' },
+              { id: 'slide-up', label: 'Slide Up', desc: 'Smooth upward slide' },
+              { id: 'subtle-scale', label: 'Subtle Scale', desc: 'Gentle zoom and fade' },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                className={`style-pill-btn ${style === opt.id ? 'active' : ''}`}
+                onClick={() => updateScrollReveal('style', opt.id)}
+              >
+                <span className="pill-title">{opt.label}</span>
+                <span className="pill-desc">{opt.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Sliders Grid */}
+        <div className="sliders-control-grid">
+          {/* Duration */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="sr-duration">ANIMATION DURATION</label>
+              <span className="slider-value-display">{duration} ms</span>
+            </div>
+            <input
+              id="sr-duration"
+              type="range"
+              min="300"
+              max="1500"
+              step="50"
+              className="field-input range-slider"
+              value={duration}
+              onChange={(e) => updateScrollReveal('duration', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Stagger Delay */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="sr-stagger">STAGGER DELAY</label>
+              <span className="slider-value-display">{staggerDelay} ms</span>
+            </div>
+            <input
+              id="sr-stagger"
+              type="range"
+              min="0"
+              max="300"
+              step="10"
+              className="field-input range-slider"
+              value={staggerDelay}
+              onChange={(e) => updateScrollReveal('staggerDelay', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Distance */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="sr-distance">VERTICAL MOVEMENT DISTANCE</label>
+              <span className="slider-value-display">{distance} px</span>
+            </div>
+            <input
+              id="sr-distance"
+              type="range"
+              min="8"
+              max="60"
+              step="2"
+              className="field-input range-slider"
+              value={distance}
+              onChange={(e) => updateScrollReveal('distance', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Threshold */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="sr-threshold">VIEWPORT TRIGGER THRESHOLD</label>
+              <span className="slider-value-display">{Math.round(threshold * 100)}% in view</span>
+            </div>
+            <input
+              id="sr-threshold"
+              type="range"
+              min="0.05"
+              max="0.50"
+              step="0.05"
+              className="field-input range-slider"
+              value={threshold}
+              onChange={(e) => updateScrollReveal('threshold', Number(e.target.value))}
+            />
+          </div>
+        </div>
+
+        {/* Replay Toggle */}
+        <div className="control-item replay-toggle-row">
+          <div className="control-title-desc">
+            <span className="control-label">Replay on Viewport Re-entry</span>
+            <span className="control-desc">Re-trigger reveal animation whenever element scrolls back into view</span>
+          </div>
+          <button
+            type="button"
+            className={`toggle-pill-btn ${replay ? 'on' : 'off'}`}
+            onClick={() => updateScrollReveal('replay', !replay)}
+          >
+            {replay ? '● REPLAY ON' : '○ ONCE ONLY'}
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  // Dedicated Tab: Contact 3D Glass Tilt (Contact Card Only)
+  const renderContactTiltControl = () => {
+    const ct = prefs.contactTilt || DEFAULT_CONTACT_TILT;
+    const isEnabled = ct.enabled !== false;
+    const maxRotX = Number(ct.maxRotationX) || 12;
+    const maxRotY = Number(ct.maxRotationY) || 12;
+    const perspective = Number(ct.perspective) || 1000;
+    const speed = Number(ct.speed) || 400;
+    const returnSpeed = Number(ct.returnSpeed) || 600;
+    const hoverScale = Number(ct.hoverScale) || 1.02;
+    const lighting = ct.lighting !== false;
+    const lightingIntensity = typeof ct.lightingIntensity === 'number' ? ct.lightingIntensity : (Number(ct.lightingIntensity) || 0.35);
+
+    return (
+      <div className="private-section-card contact-tilt-settings-card">
+        <div className="card-heading">
+          <div className="card-heading-left">
+            <span className="card-title">CONTACT 3D GLASS TILT</span>
+            <span className="card-subtext">Interactive perspective tilt & specular lighting (strictly Contact card only)</span>
+          </div>
+          <button
+            type="button"
+            className="btn-reset-section"
+            onClick={handleResetContactTilt}
+            title="Reset Contact 3D Tilt settings to safe defaults"
+          >
+            ↺ Reset Defaults
+          </button>
+        </div>
+
+        {/* Master Switch */}
+        <div className="control-item master-toggle-row">
+          <div className="control-title-desc">
+            <span className="control-label">Enable Contact 3D Tilt</span>
+            <span className="control-desc">Interactive cursor-following 3D perspective rotation on the main Contact card</span>
+          </div>
+          <button
+            type="button"
+            className={`toggle-pill-btn lg ${isEnabled ? 'on' : 'off'}`}
+            onClick={() => updateContactTilt('enabled', !isEnabled)}
+          >
+            {isEnabled ? '● ENABLED' : '○ DISABLED'}
+          </button>
+        </div>
+
+        {/* Live Interactive Preview Box */}
+        <div className="tilt-preview-container">
+          <div className="preview-header">
+            <div className="preview-header-left">
+              <span className="preview-title">INTERACTIVE CARD PREVIEW (HOVER & MOVE POINTER)</span>
+              <span className="preview-sub">Live 3D response reflecting current rotation and lighting</span>
+            </div>
+            <span className="preview-badge-pill">STRICTLY CONTACT CARD ONLY</span>
+          </div>
+          <div className="tilt-preview-stage">
+            <div
+              className={`preview-tilt-card ${isEnabled ? 'interactive' : 'disabled'}`}
+              onPointerMove={isEnabled ? handlePreviewTiltMove : undefined}
+              onPointerLeave={isEnabled ? handlePreviewTiltLeave : undefined}
+              style={{
+                perspective: `${perspective}px`,
+                transition: `transform ${returnSpeed}ms cubic-bezier(0.16, 1, 0.3, 1)`,
+              }}
+              ref={previewTiltRef}
+            >
+              <div className="preview-tilt-glare" ref={previewGlareRef} />
+              <div className="preview-card-badge">COMMUNICATION // 3D TILT</div>
+              <div className="preview-card-heading">LET'S BUILD SOMETHING INTERESTING.</div>
+              <div className="preview-card-desc">
+                Move pointer across this card to inspect 3D perspective rotation, depth, scale, and cursor-following specular glass lighting.
+              </div>
+              <div className="preview-card-actions">
+                <span className="preview-btn primary">✉ Send Email</span>
+                <span className="preview-btn">⧉ Copy Email</span>
+                <span className="preview-btn">⚡ GitHub ↗</span>
+                <span className="preview-btn">💼 LinkedIn ↗</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Sliders Grid */}
+        <div className="sliders-control-grid">
+          {/* Max Horizontal Rotation */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="ct-rot-y">MAX HORIZONTAL ROTATION</label>
+              <span className="slider-value-display">±{maxRotY}°</span>
+            </div>
+            <input
+              id="ct-rot-y"
+              type="range"
+              min="2"
+              max="30"
+              step="1"
+              className="field-input range-slider"
+              value={maxRotY}
+              onChange={(e) => updateContactTilt('maxRotationY', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Max Vertical Rotation */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="ct-rot-x">MAX VERTICAL ROTATION</label>
+              <span className="slider-value-display">±{maxRotX}°</span>
+            </div>
+            <input
+              id="ct-rot-x"
+              type="range"
+              min="2"
+              max="30"
+              step="1"
+              className="field-input range-slider"
+              value={maxRotX}
+              onChange={(e) => updateContactTilt('maxRotationX', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Perspective */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="ct-perspective">PERSPECTIVE / DEPTH</label>
+              <span className="slider-value-display">{perspective} px</span>
+            </div>
+            <input
+              id="ct-perspective"
+              type="range"
+              min="500"
+              max="2500"
+              step="50"
+              className="field-input range-slider"
+              value={perspective}
+              onChange={(e) => updateContactTilt('perspective', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Tilt Speed */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="ct-speed">TILT RESPONSE SPEED</label>
+              <span className="slider-value-display">{speed} ms</span>
+            </div>
+            <input
+              id="ct-speed"
+              type="range"
+              min="100"
+              max="1000"
+              step="25"
+              className="field-input range-slider"
+              value={speed}
+              onChange={(e) => updateContactTilt('speed', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Return Speed */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="ct-return-speed">RETURN-TO-NEUTRAL SPEED</label>
+              <span className="slider-value-display">{returnSpeed} ms</span>
+            </div>
+            <input
+              id="ct-return-speed"
+              type="range"
+              min="200"
+              max="1500"
+              step="50"
+              className="field-input range-slider"
+              value={returnSpeed}
+              onChange={(e) => updateContactTilt('returnSpeed', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Hover Scale */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="ct-scale">HOVER SCALE INTENSITY</label>
+              <span className="slider-value-display">{(hoverScale * 100).toFixed(0)}% ({hoverScale.toFixed(2)}x)</span>
+            </div>
+            <input
+              id="ct-scale"
+              type="range"
+              min="1.00"
+              max="1.10"
+              step="0.01"
+              className="field-input range-slider"
+              value={hoverScale}
+              onChange={(e) => updateContactTilt('hoverScale', Number(e.target.value))}
+            />
+          </div>
+        </div>
+
+        {/* Lighting Row */}
+        <div className="control-item lighting-toggle-row">
+          <div className="control-title-desc">
+            <span className="control-label">Cursor-Following Specular Lighting</span>
+            <span className="control-desc">Dynamic glass sheen tracking cursor position across card</span>
+          </div>
+          <button
+            type="button"
+            className={`toggle-pill-btn ${lighting ? 'on' : 'off'}`}
+            onClick={() => updateContactTilt('lighting', !lighting)}
+          >
+            {lighting ? '● LIGHTING ON' : '○ LIGHTING OFF'}
+          </button>
+        </div>
+
+        {lighting && (
+          <div className="field-group lighting-intensity-block">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="ct-light-intensity">LIGHTING INTENSITY</label>
+              <span className="slider-value-display">{Math.round(lightingIntensity * 100)}%</span>
+            </div>
+            <input
+              id="ct-light-intensity"
+              type="range"
+              min="0.10"
+              max="0.80"
+              step="0.05"
+              className="field-input range-slider"
+              value={lightingIntensity}
+              onChange={(e) => updateContactTilt('lightingIntensity', Number(e.target.value))}
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -1784,6 +2463,24 @@ export default function PrivateControlLayer({
                   >
                     📜 Interaction Log
                   </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'scroll-reveal'}
+                    className={`tab-btn ${activeTab === 'scroll-reveal' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('scroll-reveal')}
+                  >
+                    ✨ Scroll Reveal
+                  </button>
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === 'contact-tilt'}
+                    className={`tab-btn ${activeTab === 'contact-tilt' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('contact-tilt')}
+                  >
+                    🧊 Contact 3D Tilt
+                  </button>
                 </div>
 
                 {/* Panel Content Body */}
@@ -1792,6 +2489,20 @@ export default function PrivateControlLayer({
                   {activeTab === 'global-control' && (
                     <div className="global-control-tab-wrapper">
                       {renderGlobalWebsiteControl()}
+                    </div>
+                  )}
+
+                  {/* TAB: SCROLL REVEAL ANIMATIONS */}
+                  {activeTab === 'scroll-reveal' && (
+                    <div className="scroll-reveal-tab-wrapper">
+                      {renderScrollRevealControl()}
+                    </div>
+                  )}
+
+                  {/* TAB: CONTACT 3D GLASS TILT (CONTACT CARD ONLY) */}
+                  {activeTab === 'contact-tilt' && (
+                    <div className="contact-tilt-tab-wrapper">
+                      {renderContactTiltControl()}
                     </div>
                   )}
 
