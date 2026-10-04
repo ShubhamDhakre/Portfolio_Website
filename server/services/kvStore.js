@@ -10,6 +10,15 @@
 let hasWarnedMissingKV = false;
 
 /**
+ * Lua script for Redis EVAL:
+ * Atomically checks if the lock key's value matches the supplied lock token (ARGV[1]).
+ * If they match, deletes the key and returns 1.
+ * If they do not match or the key has expired, returns 0 without deleting anything.
+ */
+const COMPARE_AND_DELETE_LUA =
+  'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end';
+
+/**
  * Custom error class for failures in authoritative shared KV operations.
  * Allows middleware and route handlers to differentiate between missing keys
  * and network/upstream failures (to enforce fail-closed security).
@@ -180,15 +189,30 @@ export const kvStore = {
   },
 
   /**
-   * Release a distributed lock
+   * Atomically release a distributed lock only if the supplied lock token
+   * matches the token currently stored in the KV key.
+   * Uses Redis Lua script (EVAL) to ensure compare-and-delete is atomic.
+   * Prevents an expired or unauthorized lock token from releasing another request's lock.
    */
-  async releaseLock(lockKey, _lockToken) {
+  async releaseLock(lockKey, lockToken) {
     if (!isSharedKVConfigured()) {
       return false;
     }
+    if (!lockKey || !lockToken || typeof lockToken !== 'string') {
+      return false;
+    }
+
     try {
-      return await this.del(lockKey);
-    } catch {
+      const res = await executeKVPost([
+        'EVAL',
+        COMPARE_AND_DELETE_LUA,
+        1,
+        lockKey,
+        lockToken
+      ]);
+      return Number(res) === 1;
+    } catch (err) {
+      console.warn('[STORAGE] Error releasing distributed lock:', err.message);
       return false;
     }
   },

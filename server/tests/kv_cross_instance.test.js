@@ -91,6 +91,19 @@ const mockServer = http.createServer((req, res) => {
         const existed = kvStorage.delete(key);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ result: existed ? 1 : 0 }));
+      } else if (action === 'EVAL') {
+        // command: ['EVAL', script, 1, key, token]
+        const key = command[3];
+        const expectedToken = command[4];
+        const currentVal = kvStorage.has(key) ? kvStorage.get(key) : null;
+        if (currentVal !== null && String(currentVal) === String(expectedToken)) {
+          kvStorage.delete(key);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ result: 1 }));
+        } else {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ result: 0 }));
+        }
       } else {
         res.writeHead(400, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: `Unknown command: ${action}` }));

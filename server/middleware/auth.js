@@ -140,13 +140,21 @@ export async function revokeSession(sessionId, expiresAt) {
   revokedSessionsCache.set(sessionId, exp);
   persistRevocations();
 
-  // If shared KV is configured, broadcast revocation across serverless instances
+  // If shared KV is configured, broadcast revocation across serverless instances.
+  // Never silently suppress a session-revocation failure when shared KV is authoritative!
   if (isSharedKVConfigured()) {
     const ttlSeconds = Math.max(1, Math.ceil((exp - Date.now()) / 1000));
     try {
-      await kvStore.set(`revoked_session:${sessionId}`, 1, { ex: ttlSeconds });
+      const ok = await kvStore.set(`revoked_session:${sessionId}`, 1, { ex: ttlSeconds });
+      if (!ok) {
+        throw new KVStoreError('Authoritative KV store rejected session revocation command', 503);
+      }
     } catch (err) {
-      console.warn('[AUTH] Could not broadcast revocation to shared KV store:', err.message);
+      console.error('[AUTH CRITICAL] Could not broadcast revocation to authoritative KV store:', err.message);
+      if (err instanceof KVStoreError || err.code === 'KV_UNAVAILABLE') {
+        throw err;
+      }
+      throw new KVStoreError(`Authoritative session revocation failed: ${err.message}`, 503, err);
     }
   }
 }
@@ -174,7 +182,8 @@ export function createSession() {
 }
 
 /**
- * Revoke and invalidate a session token upon logout
+ * Revoke and invalidate a session token upon logout.
+ * Propagates authoritative KV revocation errors to ensure caller can handle fail-closed responses.
  */
 export async function destroySession(signedToken) {
   if (!signedToken || typeof signedToken !== 'string') return;
@@ -182,13 +191,16 @@ export async function destroySession(signedToken) {
   if (dotIndex <= 0) return;
 
   const payloadB64 = signedToken.substring(0, dotIndex);
+  let payload;
   try {
-    const payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
-    if (payload?.id) {
-      await revokeSession(payload.id, payload.exp);
-    }
+    payload = JSON.parse(Buffer.from(payloadB64, 'base64url').toString('utf8'));
   } catch {
     // Malformed payload
+    return;
+  }
+
+  if (payload?.id) {
+    await revokeSession(payload.id, payload.exp);
   }
 }
 

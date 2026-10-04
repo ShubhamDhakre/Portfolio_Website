@@ -104,7 +104,11 @@ router.post('/login', loginRateLimiter, async (req, res) => {
     // Invalidate any previous session and clear stale cookie to prevent session fixation
     const previousToken = req.cookies?.[SESSION_COOKIE_NAME];
     if (previousToken) {
-      await destroySession(previousToken);
+      try {
+        await destroySession(previousToken);
+      } catch (destroyErr) {
+        console.warn('Could not revoke previous session during login:', destroyErr.message);
+      }
       res.clearCookie(SESSION_COOKIE_NAME, cookieOptions);
     }
 
@@ -126,27 +130,51 @@ router.post('/login', loginRateLimiter, async (req, res) => {
 
 /**
  * POST /api/admin/logout
- * Revokes session from server registry and clears session cookie with matching security flags
+ * Revokes session from authoritative store and clears session cookie with matching security flags.
+ * If authoritative shared KV fails, returns controlled 503 while ensuring browser cookie is cleared.
  */
 router.post('/logout', async (req, res) => {
-  const token = req.cookies?.[SESSION_COOKIE_NAME];
-  if (token) {
-    await destroySession(token);
-  }
-
   const isProduction = process.env.NODE_ENV === 'production';
-  res.clearCookie(SESSION_COOKIE_NAME, {
+  const cookieOptions = {
     httpOnly: true,
     secure: isProduction,
     sameSite: 'lax',
     path: '/'
-  });
+  };
 
-  return res.status(200).json({
-    success: true,
-    authenticated: false,
-    message: 'Global control session terminated.'
-  });
+  const token = req.cookies?.[SESSION_COOKIE_NAME];
+
+  // Always clear the browser's session cookie using the existing secure cookie settings,
+  // even if server-side revocation fails or token is missing
+  res.clearCookie(SESSION_COOKIE_NAME, cookieOptions);
+
+  if (!token) {
+    return res.status(200).json({
+      success: true,
+      authenticated: false,
+      message: 'Global control session terminated.'
+    });
+  }
+
+  try {
+    await destroySession(token);
+    return res.status(200).json({
+      success: true,
+      authenticated: false,
+      message: 'Global control session terminated.'
+    });
+  } catch (err) {
+    console.error('[AUTH] Server-side session revocation failed:', err.message);
+    // If shared KV storage is configured as authoritative in production, never silently suppress a session-revocation failure.
+    // Return an appropriate controlled 503 Service Unavailable response instead of falsely reporting that server-side logout succeeded.
+    return res.status(503).json({
+      success: false,
+      authenticated: false,
+      error: 'Service Unavailable',
+      code: 'REVOCATION_FAILED',
+      message: 'Authoritative session revocation store is temporarily unavailable. Local session cookie has been cleared, but session revocation could not be persisted server-side.'
+    });
+  }
 });
 
 /**
@@ -166,7 +194,7 @@ router.get('/session', async (req, res) => {
       authenticated: Boolean(isValid)
     });
   } catch (err) {
-    if (err.code === 'KV_UNAVAILABLE') {
+    if (err.code === 'KV_UNAVAILABLE' || err.status === 503) {
       return res.status(503).json({
         authenticated: false,
         error: 'Service Unavailable',
