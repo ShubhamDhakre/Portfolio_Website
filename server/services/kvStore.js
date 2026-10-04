@@ -440,6 +440,13 @@ export const kvStore = {
       throw err;
     }
 
+    if (res === 'INVALID_EXPECTED_VERSION') {
+      const err = new Error('A valid numeric integer expectedBaseVersion is strictly required to commit settings.');
+      err.status = 400;
+      err.code = 'INVALID_EXPECTED_VERSION';
+      throw err;
+    }
+
     if (res !== 'OK') {
       const err = new Error(`Settings atomic commit failed with unexpected code: ${res}`);
       err.status = 502;

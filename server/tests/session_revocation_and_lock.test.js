@@ -42,6 +42,13 @@ console.log('🧪 Starting Session Revocation & Distributed Lock Ownership Regre
 const kvStorage = new Map();
 let mockServerMode = 'normal'; // 'normal' | '500' | 'timeout' | 'malformed' | 'setFail'
 let injectConcurrentWriteOnNextNX = null;
+let dropReadbackAfterNX = false;
+let mockServerDropNextGet = false;
+let simulateDocumentMissingOnNextCommit = false;
+let simulateMalformedOnNextCommit = false;
+let simulateLockLostOnNextCommit = false;
+let simulateMissingTokenOnNextCommit = false;
+let simulateInvalidVersionOnNextCommit = false;
 
 const mockKVServer = http.createServer((req, res) => {
   if (mockServerMode === '500') {
@@ -89,6 +96,12 @@ const mockKVServer = http.createServer((req, res) => {
 
       if (action === 'GET') {
         const key = command[1];
+        if (mockServerDropNextGet) {
+          mockServerDropNextGet = false;
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ result: null }));
+          return;
+        }
         const val = kvStorage.has(key) ? kvStorage.get(key) : null;
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ result: val }));
@@ -96,6 +109,11 @@ const mockKVServer = http.createServer((req, res) => {
         const key = command[1];
         const val = command[2];
         const isNx = command.includes('NX');
+
+        if (isNx && dropReadbackAfterNX) {
+          dropReadbackAfterNX = false;
+          mockServerDropNextGet = true;
+        }
 
         if (isNx && injectConcurrentWriteOnNextNX) {
           kvStorage.set(key, injectConcurrentWriteOnNextNX);
@@ -138,6 +156,37 @@ const mockKVServer = http.createServer((req, res) => {
 
         // Case B: ATOMIC_COMMIT_SETTINGS_LUA: ['EVAL', script, 2, settingsKey, lockKey, serializedDoc, lockToken, baseVersion]
         if (numKeys === 2) {
+          if (simulateDocumentMissingOnNextCommit) {
+            simulateDocumentMissingOnNextCommit = false;
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'DOCUMENT_MISSING' }));
+            return;
+          }
+          if (simulateMalformedOnNextCommit) {
+            simulateMalformedOnNextCommit = false;
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'MALFORMED_STORED_SETTINGS' }));
+            return;
+          }
+          if (simulateLockLostOnNextCommit) {
+            simulateLockLostOnNextCommit = false;
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'LOCK_LOST' }));
+            return;
+          }
+          if (simulateMissingTokenOnNextCommit) {
+            simulateMissingTokenOnNextCommit = false;
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'MISSING_LOCK_TOKEN' }));
+            return;
+          }
+          if (simulateInvalidVersionOnNextCommit) {
+            simulateInvalidVersionOnNextCommit = false;
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'INVALID_EXPECTED_VERSION' }));
+            return;
+          }
+
           const settingsKey = command[3];
           const lockKey = command[4];
           const serializedDoc = command[5];
@@ -887,6 +936,180 @@ mockKVServer.listen(0, '127.0.0.1', async () => {
       assert.strictEqual(stolenCommitError.code, 'LOCK_LOST');
       assert.strictEqual(stolenCommitError.status, 409);
       console.log('    ✓ Atomic server-side lock token check rejected commit with 409 LOCK_LOST after lock theft');
+
+      // Test 4.7: Authoritative KV settings validation rejects malformed documents and invalid/missing versions before caching
+      console.log('\n  [Test 4.7] Authoritative KV validation rejects malformed documents & invalid versions');
+      // 4.7.a: Document in KV missing version property
+      kvStorage.set('site_settings', { global: { theme: 'nature' } });
+      invalidateSettingsCache();
+      let errMissingVer = null;
+      try {
+        await getSiteSettingsAsync({ forceRefresh: true });
+      } catch (err) {
+        errMissingVer = err;
+      }
+      assert(errMissingVer, 'Must reject document missing version property');
+      assert.strictEqual(errMissingVer.code, 'MALFORMED_STORED_SETTINGS');
+      assert.strictEqual(errMissingVer.status, 502);
+
+      // 4.7.b: Document in KV with non-numeric version string
+      kvStorage.set('site_settings', { version: 'invalid_version_str', global: {} });
+      invalidateSettingsCache();
+      let errNonNumVer = null;
+      try {
+        await getSiteSettingsAsync({ forceRefresh: true });
+      } catch (err) {
+        errNonNumVer = err;
+      }
+      assert(errNonNumVer, 'Must reject document with non-numeric version');
+      assert.strictEqual(errNonNumVer.code, 'MALFORMED_STORED_SETTINGS');
+      assert.strictEqual(errNonNumVer.status, 502);
+
+      // 4.7.c: Document in KV with non-integer float version
+      kvStorage.set('site_settings', { version: 2.7, global: {} });
+      invalidateSettingsCache();
+      let errFloatVer = null;
+      try {
+        await getSiteSettingsAsync({ forceRefresh: true });
+      } catch (err) {
+        errFloatVer = err;
+      }
+      assert(errFloatVer, 'Must reject document with float version');
+      assert.strictEqual(errFloatVer.code, 'MALFORMED_STORED_SETTINGS');
+      assert.strictEqual(errFloatVer.status, 502);
+
+      // 4.7.d: Document in KV is an array instead of an object
+      kvStorage.set('site_settings', [{ version: 1 }]);
+      invalidateSettingsCache();
+      let errArrayDoc = null;
+      try {
+        await getSiteSettingsAsync({ forceRefresh: true });
+      } catch (err) {
+        errArrayDoc = err;
+      }
+      assert(errArrayDoc, 'Must reject array document in KV');
+      assert.strictEqual(errArrayDoc.code, 'MALFORMED_STORED_SETTINGS');
+      assert.strictEqual(errArrayDoc.status, 502);
+
+      // 4.7.e: Document in KV is an unparseable malformed string
+      kvStorage.set('site_settings', 'unparseable-bad-string');
+      invalidateSettingsCache();
+      let errBadStr = null;
+      try {
+        await getSiteSettingsAsync({ forceRefresh: true });
+      } catch (err) {
+        errBadStr = err;
+      }
+      assert(errBadStr, 'Must reject malformed string in KV');
+      assert.strictEqual(errBadStr.code, 'MALFORMED_STORED_SETTINGS');
+      assert.strictEqual(errBadStr.status, 502);
+      console.log('    ✓ Authoritative KV validation rejected missing/invalid versions and malformed payloads with 502 MALFORMED_STORED_SETTINGS');
+
+      // Test 4.8: First-time initialization requires successful authoritative read-back after SET NX
+      console.log('\n  [Test 4.8] First-time initialization requires successful authoritative read-back');
+      kvStorage.delete('site_settings');
+      invalidateSettingsCache();
+      dropReadbackAfterNX = true;
+
+      let errReadbackFailed = null;
+      try {
+        await getSiteSettingsAsync();
+      } catch (err) {
+        errReadbackFailed = err;
+      }
+      assert(errReadbackFailed, 'Must fail when authoritative read-back returns null');
+      assert.strictEqual(errReadbackFailed.code, 'KV_UNAVAILABLE');
+      assert.strictEqual(errReadbackFailed.status, 503);
+      assert.ok(
+        errReadbackFailed.message.includes('Failed to read back authoritative settings'),
+        'Must indicate read-back failure'
+      );
+      console.log('    ✓ Missing read-back after SET NX strictly throws controlled 503 KV_UNAVAILABLE instead of silent fallback');
+
+      // Test 4.9: saveSiteSettings() preserves specific error status and codes without generic masking
+      console.log('\n  [Test 4.9] saveSiteSettings() preserves specific error status and codes');
+      // Reset KV with a valid document so getSiteSettingsAsync succeeds
+      const validDoc4_9 = {
+        version: 50,
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'admin',
+        global: { theme: 'default' }
+      };
+      kvStorage.set('site_settings', validDoc4_9);
+      invalidateSettingsCache();
+
+      // 4.9.a: DOCUMENT_MISSING during commit is preserved (409)
+      simulateDocumentMissingOnNextCommit = true;
+      let errDocMissing = null;
+      try {
+        await saveSiteSettings({ global: { theme: 'nature' } });
+      } catch (err) {
+        errDocMissing = err;
+      }
+      assert(errDocMissing, 'Must preserve DOCUMENT_MISSING');
+      assert.strictEqual(errDocMissing.code, 'DOCUMENT_MISSING');
+      assert.strictEqual(errDocMissing.status, 409);
+
+      // 4.9.b: MALFORMED_STORED_SETTINGS during commit is preserved (502)
+      simulateMalformedOnNextCommit = true;
+      let errMalformedCommit = null;
+      try {
+        await saveSiteSettings({ global: { theme: 'nature' } });
+      } catch (err) {
+        errMalformedCommit = err;
+      }
+      assert(errMalformedCommit, 'Must preserve MALFORMED_STORED_SETTINGS');
+      assert.strictEqual(errMalformedCommit.code, 'MALFORMED_STORED_SETTINGS');
+      assert.strictEqual(errMalformedCommit.status, 502);
+
+      // 4.9.c: VERSION_CONFLICT is preserved (409)
+      let errVerConflict = null;
+      try {
+        await saveSiteSettings({ global: { theme: 'aurora' }, expectedVersion: 9999 });
+      } catch (err) {
+        errVerConflict = err;
+      }
+      assert(errVerConflict, 'Must preserve VERSION_CONFLICT');
+      assert.strictEqual(errVerConflict.code, 'VERSION_CONFLICT');
+      assert.strictEqual(errVerConflict.status, 409);
+
+      // 4.9.d: LOCK_LOST during commit is preserved (409)
+      simulateLockLostOnNextCommit = true;
+      let errLockLost = null;
+      try {
+        await saveSiteSettings({ global: { theme: 'monochrome' } });
+      } catch (err) {
+        errLockLost = err;
+      }
+      assert(errLockLost, 'Must preserve LOCK_LOST');
+      assert.strictEqual(errLockLost.code, 'LOCK_LOST');
+      assert.strictEqual(errLockLost.status, 409);
+
+      // 4.9.e: INVALID_EXPECTED_VERSION during commit is preserved (400)
+      simulateInvalidVersionOnNextCommit = true;
+      let errInvVerCommit = null;
+      try {
+        await saveSiteSettings({ global: { theme: 'monochrome' } });
+      } catch (err) {
+        errInvVerCommit = err;
+      }
+      assert(errInvVerCommit, 'Must preserve INVALID_EXPECTED_VERSION');
+      assert.strictEqual(errInvVerCommit.code, 'INVALID_EXPECTED_VERSION');
+      assert.strictEqual(errInvVerCommit.status, 400);
+
+      // 4.9.f: MISSING_LOCK_TOKEN during commit is preserved (400)
+      simulateMissingTokenOnNextCommit = true;
+      let errMissToken = null;
+      try {
+        await saveSiteSettings({ global: { theme: 'monochrome' } });
+      } catch (err) {
+        errMissToken = err;
+      }
+      assert(errMissToken, 'Must preserve MISSING_LOCK_TOKEN');
+      assert.strictEqual(errMissToken.code, 'MISSING_LOCK_TOKEN');
+      assert.strictEqual(errMissToken.status, 400);
+
+      console.log('    ✓ saveSiteSettings() preserved exact error codes and status for DOCUMENT_MISSING (409), MALFORMED_STORED_SETTINGS (502), VERSION_CONFLICT (409), LOCK_LOST (409), INVALID_EXPECTED_VERSION (400), MISSING_LOCK_TOKEN (400)');
 
       console.log('\n=======================================================');
       console.log('✅ ALL SESSION REVOCATION, LOCK & PERSISTENCE TESTS PASSED!');

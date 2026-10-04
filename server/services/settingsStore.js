@@ -307,6 +307,42 @@ function writeSettingsToDisk(newDoc) {
 }
 
 /**
+ * Validate authoritative settings document fetched from shared KV.
+ * Fails closed if the document is malformed, not an object, an array,
+ * or if it has an invalid or missing version.
+ */
+export function validateAuthoritativeSettingsDoc(doc) {
+  if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
+    const err = new Error('Authoritative settings document in shared KV is malformed.');
+    err.status = 502;
+    err.code = 'MALFORMED_STORED_SETTINGS';
+    throw err;
+  }
+
+  if (
+    doc.version === undefined ||
+    doc.version === null ||
+    typeof doc.version !== 'number' ||
+    !Number.isInteger(doc.version) ||
+    doc.version < 1
+  ) {
+    const err = new Error('Authoritative settings document in shared KV has an invalid or missing version.');
+    err.status = 502;
+    err.code = 'MALFORMED_STORED_SETTINGS';
+    throw err;
+  }
+
+  if (doc.global !== undefined && (typeof doc.global !== 'object' || doc.global === null || Array.isArray(doc.global))) {
+    const err = new Error('Authoritative settings document in shared KV has malformed global settings.');
+    err.status = 502;
+    err.code = 'MALFORMED_STORED_SETTINGS';
+    throw err;
+  }
+
+  return true;
+}
+
+/**
  * Merge partial/raw settings payload with complete defaults
  */
 function normalizeSettingsDoc(parsed) {
@@ -393,35 +429,35 @@ export async function getSiteSettingsAsync(options = {}) {
     if (shouldFetchKV) {
       try {
         const remote = await kvStore.get('site_settings');
-        if (remote !== null && typeof remote === 'object') {
+        if (remote !== null) {
+          validateAuthoritativeSettingsDoc(remote);
           const loadedDoc = normalizeSettingsDoc(remote);
           inMemorySettingsCache = loadedDoc;
           lastKVSyncTime = now;
           return loadedDoc;
-        } else if (remote === null) {
+        } else {
           // KV store is configured but key not yet initialized (first startup)
           // Use atomic initialization (SET NX) to prevent overwriting a concurrent successful write
           const initialDoc = getSiteSettings();
           await kvStore.set('site_settings', initialDoc, { nx: true });
           // Read authoritative value back in case a concurrent initialization or write won the race
           const authoritative = await kvStore.get('site_settings');
-          if (authoritative !== null && typeof authoritative !== 'object') {
-            const err = new Error('Authoritative settings document in shared KV is malformed.');
-            err.status = 502;
-            err.code = 'MALFORMED_STORED_SETTINGS';
-            throw err;
+          if (authoritative === null) {
+            const readErr = new Error('Failed to read back authoritative settings after initialization.');
+            readErr.status = 503;
+            readErr.code = 'KV_UNAVAILABLE';
+            throw readErr;
           }
-          const loadedDoc = normalizeSettingsDoc(authoritative || initialDoc);
+          validateAuthoritativeSettingsDoc(authoritative);
+          const loadedDoc = normalizeSettingsDoc(authoritative);
           inMemorySettingsCache = loadedDoc;
           lastKVSyncTime = Date.now();
           return loadedDoc;
-        } else {
-          const err = new Error('Authoritative settings document in shared KV is malformed.');
-          err.status = 502;
-          err.code = 'MALFORMED_STORED_SETTINGS';
-          throw err;
         }
       } catch (err) {
+        if (err.code === 'MALFORMED_STORED_SETTINGS' || (err.status && err.code)) {
+          throw err;
+        }
         // Authoritative store failed. Fail closed: do not serve stale local defaults as authoritative!
         console.error('[SETTINGS CRITICAL] Authoritative KV settings read failed:', err.message);
         const storeErr = new Error('Authoritative settings store is temporarily unavailable. Please retry.');
@@ -589,7 +625,15 @@ export async function saveSiteSettings(updatedFields, updatedBy = 'admin') {
             throw writeErr;
           }
         } catch (err) {
-          if (err.code === 'LOCK_LOST' || err.code === 'VERSION_CONFLICT') {
+          const preservedCodes = [
+            'LOCK_LOST',
+            'VERSION_CONFLICT',
+            'DOCUMENT_MISSING',
+            'MALFORMED_STORED_SETTINGS',
+            'MISSING_LOCK_TOKEN',
+            'INVALID_EXPECTED_VERSION'
+          ];
+          if (preservedCodes.includes(err.code)) {
             throw err;
           }
           console.error('[STORAGE CRITICAL] Authoritative KV write failed:', err.message);
