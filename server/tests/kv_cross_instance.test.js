@@ -118,33 +118,62 @@ const mockServer = http.createServer((req, res) => {
           const lockToken = command[6];
           const baseVersion = command[7];
 
-          // Check lock ownership
+          // 1. Validate lockToken
+          if (!lockToken || String(lockToken).trim() === '') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'MISSING_LOCK_TOKEN' }));
+            return;
+          }
+
+          // 2. Validate baseVersion
+          if (baseVersion === undefined || baseVersion === null || String(baseVersion).trim() === '' || isNaN(Number(baseVersion))) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'INVALID_EXPECTED_VERSION' }));
+            return;
+          }
+          const expectedVer = Number(baseVersion);
+
+          // 3. Check lock ownership
           const currentLock = kvStorage.has(lockKey) ? kvStorage.get(lockKey) : null;
-          if (lockKey && lockToken && currentLock !== lockToken) {
+          if (!currentLock || currentLock !== lockToken) {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ result: 'LOCK_LOST' }));
             return;
           }
 
-          // Check baseVersion
-          const currentVal = kvStorage.has(settingsKey) ? kvStorage.get(settingsKey) : null;
-          if (currentVal && baseVersion !== undefined && baseVersion !== null && baseVersion !== '') {
-            let currentVer = null;
-            if (typeof currentVal === 'object' && currentVal !== null) {
-              currentVer = currentVal.version;
-            } else if (typeof currentVal === 'string') {
-              try {
-                currentVer = JSON.parse(currentVal).version;
-              } catch {
-                const match = currentVal.match(/"version"\s*:\s*(\d+)/);
-                if (match) currentVer = Number(match[1]);
+          // 4. Stored document check
+          if (!kvStorage.has(settingsKey)) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'DOCUMENT_MISSING' }));
+            return;
+          }
+
+          const currentVal = kvStorage.get(settingsKey);
+          let currentVer = null;
+          if (typeof currentVal === 'object' && currentVal !== null && currentVal.version !== undefined) {
+            currentVer = Number(currentVal.version);
+          } else if (typeof currentVal === 'string') {
+            try {
+              const parsed = JSON.parse(currentVal);
+              if (parsed && parsed.version !== undefined) {
+                currentVer = Number(parsed.version);
               }
+            } catch {
+              const match = currentVal.match(/"version"\s*:\s*(\d+)/);
+              if (match) currentVer = Number(match[1]);
             }
-            if (currentVer !== null && Number(currentVer) !== Number(baseVersion)) {
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ result: 'VERSION_CONFLICT' }));
-              return;
-            }
+          }
+
+          if (currentVer === null || isNaN(currentVer)) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'MALFORMED_STORED_SETTINGS' }));
+            return;
+          }
+
+          if (currentVer !== expectedVer) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'VERSION_CONFLICT' }));
+            return;
           }
 
           let toStore = serializedDoc;

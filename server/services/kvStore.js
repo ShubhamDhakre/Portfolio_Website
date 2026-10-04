@@ -29,37 +29,58 @@ const RENEW_LEASE_LUA =
 
 /**
  * Lua script for Redis EVAL:
- * Atomically commits settings to shared KV only if:
- * 1. Lock ownership check: KEYS[2] matches ARGV[2] (ensures writer still owns lock).
- * 2. Version check: KEYS[1] current version matches ARGV[3] (ensures no concurrent version race).
- * Returns "OK" on success, "LOCK_LOST" if lock was lost/stolen, "VERSION_CONFLICT" if version changed.
+ * Atomically commits settings to shared KV with strict fail-closed checks:
+ * 1. Requires non-empty lock token and valid expected base version.
+ * 2. Mandatory lock ownership check: KEYS[2] must equal ARGV[2].
+ * 3. Mandatory version check: KEYS[1] must exist, be valid JSON with a valid numeric version,
+ *    and its version must equal ARGV[3].
+ * If any check fails, returns an explicit error code instead of writing.
  */
 const ATOMIC_COMMIT_SETTINGS_LUA = `
-if KEYS[2] and ARGV[2] and ARGV[2] ~= "" then
-  local currentLock = redis.call("get", KEYS[2])
-  if currentLock ~= ARGV[2] then
-    return "LOCK_LOST"
-  end
+if not ARGV[2] or ARGV[2] == "" then
+  return "MISSING_LOCK_TOKEN"
+end
+
+if not ARGV[3] or ARGV[3] == "" then
+  return "INVALID_EXPECTED_VERSION"
+end
+
+local expectedVer = tonumber(ARGV[3])
+if not expectedVer or math.floor(expectedVer) ~= expectedVer or expectedVer < 0 then
+  return "INVALID_EXPECTED_VERSION"
+end
+
+local currentLock = redis.call("get", KEYS[2])
+if not currentLock or currentLock ~= ARGV[2] then
+  return "LOCK_LOST"
 end
 
 local currentRaw = redis.call("get", KEYS[1])
-if currentRaw and ARGV[3] and ARGV[3] ~= "" then
-  local expectedVer = tonumber(ARGV[3])
-  if expectedVer then
-    local currentVer = nil
-    local status, doc = pcall(cjson.decode, currentRaw)
-    if status and doc and doc.version then
-      currentVer = tonumber(doc.version)
-    else
-      local match = string.match(currentRaw, '"version"%s*:%s*(%d+)')
-      if match then
-        currentVer = tonumber(match)
-      end
-    end
-    if currentVer and currentVer ~= expectedVer then
-      return "VERSION_CONFLICT"
-    end
+if not currentRaw then
+  return "DOCUMENT_MISSING"
+end
+
+local currentVer = nil
+if type(cjson) == "table" and type(cjson.decode) == "function" then
+  local status, doc = pcall(cjson.decode, currentRaw)
+  if not status or type(doc) ~= "table" or doc.version == nil then
+    return "MALFORMED_STORED_SETTINGS"
   end
+  currentVer = tonumber(doc.version)
+  if not currentVer then
+    return "MALFORMED_STORED_SETTINGS"
+  end
+else
+  local match = string.match(currentRaw, '"version"%s*:%s*(%d+)')
+  if match then
+    currentVer = tonumber(match)
+  else
+    return "MALFORMED_STORED_SETTINGS"
+  end
+end
+
+if currentVer ~= expectedVer then
+  return "VERSION_CONFLICT"
 end
 
 redis.call("set", KEYS[1], ARGV[1])
@@ -334,11 +355,15 @@ export const kvStore = {
 
   /**
    * Atomically commits settings to shared KV only if:
-   * 1. The distributed lock is STILL owned by lockToken.
-   * 2. The document version currently in KV matches expectedBaseVersion (preventing cross-instance race conditions).
+   * 1. A non-empty lock token and valid expected base version are provided.
+   * 2. The distributed lock is STILL owned by lockToken in Redis.
+   * 3. The document version currently stored in KV matches expectedBaseVersion.
    *
-   * Throws Error with code 'LOCK_LOST' (409) if lock ownership was lost.
+   * Throws Error with code 'LOCK_LOST' (409) if lock ownership was lost or expired.
    * Throws Error with code 'VERSION_CONFLICT' (409) if document version in KV changed.
+   * Throws Error with code 'DOCUMENT_MISSING' (409) if document is missing in KV.
+   * Throws Error with code 'MALFORMED_STORED_SETTINGS' (502) if stored document is malformed.
+   * Throws Error with code 'MISSING_LOCK_TOKEN' / 'INVALID_EXPECTED_VERSION' (400) on invalid arguments.
    * Throws KVStoreError (503) on network failure or KV outage.
    */
   async commitSettingsAtomic(settingsKey, lockKey, newDoc, lockToken, expectedBaseVersion) {
@@ -346,8 +371,28 @@ export const kvStore = {
       return false;
     }
 
+    if (!lockToken || typeof lockToken !== 'string' || !lockToken.trim()) {
+      const err = new Error('A valid, non-empty lock token is strictly required to commit settings.');
+      err.status = 400;
+      err.code = 'MISSING_LOCK_TOKEN';
+      throw err;
+    }
+
+    if (
+      expectedBaseVersion === undefined ||
+      expectedBaseVersion === null ||
+      typeof expectedBaseVersion !== 'number' ||
+      !Number.isInteger(expectedBaseVersion) ||
+      expectedBaseVersion < 0
+    ) {
+      const err = new Error('A valid numeric integer expectedBaseVersion is strictly required to commit settings.');
+      err.status = 400;
+      err.code = 'INVALID_EXPECTED_VERSION';
+      throw err;
+    }
+
     const serialized = typeof newDoc === 'object' ? JSON.stringify(newDoc) : String(newDoc);
-    const verStr = expectedBaseVersion !== undefined && expectedBaseVersion !== null ? String(expectedBaseVersion) : '';
+    const verStr = String(expectedBaseVersion);
 
     const res = await executeKVPost([
       'EVAL',
@@ -356,7 +401,7 @@ export const kvStore = {
       settingsKey,
       lockKey,
       serialized,
-      lockToken || '',
+      lockToken.trim(),
       verStr
     ]);
 
@@ -374,7 +419,35 @@ export const kvStore = {
       throw conflictErr;
     }
 
-    return res === 'OK';
+    if (res === 'DOCUMENT_MISSING') {
+      const missingErr = new Error('Settings document was unexpectedly missing in authoritative store during commit.');
+      missingErr.status = 409;
+      missingErr.code = 'DOCUMENT_MISSING';
+      throw missingErr;
+    }
+
+    if (res === 'MALFORMED_STORED_SETTINGS') {
+      const malformedErr = new Error('Authoritative store contains malformed settings document or invalid version.');
+      malformedErr.status = 502;
+      malformedErr.code = 'MALFORMED_STORED_SETTINGS';
+      throw malformedErr;
+    }
+
+    if (res === 'MISSING_LOCK_TOKEN') {
+      const err = new Error('A valid, non-empty lock token is strictly required to commit settings.');
+      err.status = 400;
+      err.code = 'MISSING_LOCK_TOKEN';
+      throw err;
+    }
+
+    if (res !== 'OK') {
+      const err = new Error(`Settings atomic commit failed with unexpected code: ${res}`);
+      err.status = 502;
+      err.code = 'KV_COMMIT_FAILED';
+      throw err;
+    }
+
+    return true;
   },
 
   /**

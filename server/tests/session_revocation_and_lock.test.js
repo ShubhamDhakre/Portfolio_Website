@@ -41,6 +41,7 @@ console.log('🧪 Starting Session Revocation & Distributed Lock Ownership Regre
 // ---------------------------------------------------------------------------
 const kvStorage = new Map();
 let mockServerMode = 'normal'; // 'normal' | '500' | 'timeout' | 'malformed' | 'setFail'
+let injectConcurrentWriteOnNextNX = null;
 
 const mockKVServer = http.createServer((req, res) => {
   if (mockServerMode === '500') {
@@ -96,6 +97,11 @@ const mockKVServer = http.createServer((req, res) => {
         const val = command[2];
         const isNx = command.includes('NX');
 
+        if (isNx && injectConcurrentWriteOnNextNX) {
+          kvStorage.set(key, injectConcurrentWriteOnNextNX);
+          injectConcurrentWriteOnNextNX = null;
+        }
+
         if (isNx && kvStorage.has(key)) {
           // Key already exists, NX condition fails
           res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -138,33 +144,68 @@ const mockKVServer = http.createServer((req, res) => {
           const lockToken = command[6];
           const baseVersion = command[7];
 
-          // Check lock ownership
+          // 1. Validate lockToken
+          if (!lockToken || String(lockToken).trim() === '') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'MISSING_LOCK_TOKEN' }));
+            return;
+          }
+
+          // 2. Validate baseVersion
+          if (
+            baseVersion === undefined ||
+            baseVersion === null ||
+            String(baseVersion).trim() === '' ||
+            isNaN(Number(baseVersion)) ||
+            !Number.isInteger(Number(baseVersion)) ||
+            Number(baseVersion) < 0
+          ) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'INVALID_EXPECTED_VERSION' }));
+            return;
+          }
+          const expectedVer = Number(baseVersion);
+
+          // 3. Check lock ownership
           const currentLock = kvStorage.has(lockKey) ? kvStorage.get(lockKey) : null;
-          if (lockKey && lockToken && currentLock !== lockToken) {
+          if (!currentLock || currentLock !== lockToken) {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ result: 'LOCK_LOST' }));
             return;
           }
 
-          // Check baseVersion
-          const currentVal = kvStorage.has(settingsKey) ? kvStorage.get(settingsKey) : null;
-          if (currentVal && baseVersion !== undefined && baseVersion !== null && baseVersion !== '') {
-            let currentVer = null;
-            if (typeof currentVal === 'object' && currentVal !== null) {
-              currentVer = currentVal.version;
-            } else if (typeof currentVal === 'string') {
-              try {
-                currentVer = JSON.parse(currentVal).version;
-              } catch {
-                const match = currentVal.match(/"version"\s*:\s*(\d+)/);
-                if (match) currentVer = Number(match[1]);
+          // 4. Stored document check
+          if (!kvStorage.has(settingsKey)) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'DOCUMENT_MISSING' }));
+            return;
+          }
+
+          const currentVal = kvStorage.get(settingsKey);
+          let currentVer = null;
+          if (typeof currentVal === 'object' && currentVal !== null && currentVal.version !== undefined) {
+            currentVer = Number(currentVal.version);
+          } else if (typeof currentVal === 'string') {
+            try {
+              const parsed = JSON.parse(currentVal);
+              if (parsed && typeof parsed === 'object' && parsed.version !== undefined) {
+                currentVer = Number(parsed.version);
               }
+            } catch {
+              // Syntax error: malformed JSON
             }
-            if (currentVer !== null && Number(currentVer) !== Number(baseVersion)) {
-              res.writeHead(200, { 'Content-Type': 'application/json' });
-              res.end(JSON.stringify({ result: 'VERSION_CONFLICT' }));
-              return;
-            }
+          }
+
+          if (currentVer === null || isNaN(currentVer)) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'MALFORMED_STORED_SETTINGS' }));
+            return;
+          }
+
+          if (currentVer !== expectedVer) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ result: 'VERSION_CONFLICT' }));
+            return;
           }
 
           let toStore = serializedDoc;
@@ -211,7 +252,12 @@ mockKVServer.listen(0, '127.0.0.1', async () => {
   const { default: app } = await import('../index.js');
   const { createSession, verifySessionTokenAsync, SESSION_COOKIE_NAME } = await import('../middleware/auth.js');
   const { kvStore, isSharedKVConfigured } = await import('../services/kvStore.js');
-  const { saveSiteSettings, getSiteSettingsAsync } = await import('../services/settingsStore.js');
+  const {
+    saveSiteSettings,
+    getSiteSettingsAsync,
+    saveSiteSettingsSync,
+    invalidateSettingsCache
+  } = await import('../services/settingsStore.js');
 
   const appServer = http.createServer(app);
 
@@ -607,6 +653,240 @@ mockKVServer.listen(0, '127.0.0.1', async () => {
       const readAfterFailedWrite = await getSiteSettingsAsync();
       assert.notStrictEqual(readAfterFailedWrite.global?.theme, 'day', 'Uncommitted settings must not be cached or saved');
       console.log('    ✓ Write failure returned 503 and did not corrupt or update local settings');
+
+      // =======================================================================
+      // PART 4: TARGETED CONCURRENCY & FAIL-CLOSED SETTINGS REGRESSION TESTS
+      // =======================================================================
+      console.log('\n--- Section 4: Concurrency & Settings Persistence Regressions ---');
+
+      // Test 4.1: Missing or empty lock token is strictly rejected
+      console.log('\n  [Test 4.1] Missing or empty lock token is strictly rejected (MISSING_LOCK_TOKEN)');
+      const testDoc4_1 = { version: 20, global: { theme: 'default' } };
+
+      // 4.1.a: null lock token
+      let errMissingLock1 = null;
+      try {
+        await kvStore.commitSettingsAtomic('site_settings', 'lock:site_settings', testDoc4_1, null, 19);
+      } catch (err) {
+        errMissingLock1 = err;
+      }
+      assert(errMissingLock1, 'Must throw error when lockToken is null');
+      assert.strictEqual(errMissingLock1.code, 'MISSING_LOCK_TOKEN');
+      assert.strictEqual(errMissingLock1.status, 400);
+
+      // 4.1.b: empty string lock token
+      let errMissingLock2 = null;
+      try {
+        await kvStore.commitSettingsAtomic('site_settings', 'lock:site_settings', testDoc4_1, '', 19);
+      } catch (err) {
+        errMissingLock2 = err;
+      }
+      assert(errMissingLock2, 'Must throw error when lockToken is empty string');
+      assert.strictEqual(errMissingLock2.code, 'MISSING_LOCK_TOKEN');
+      assert.strictEqual(errMissingLock2.status, 400);
+
+      // 4.1.c: whitespace-only lock token
+      let errMissingLock3 = null;
+      try {
+        await kvStore.commitSettingsAtomic('site_settings', 'lock:site_settings', testDoc4_1, '   ', 19);
+      } catch (err) {
+        errMissingLock3 = err;
+      }
+      assert(errMissingLock3, 'Must throw error when lockToken is whitespace');
+      assert.strictEqual(errMissingLock3.code, 'MISSING_LOCK_TOKEN');
+      assert.strictEqual(errMissingLock3.status, 400);
+      console.log('    ✓ Missing/empty/whitespace lockToken strictly rejected with 400 MISSING_LOCK_TOKEN');
+
+      // Test 4.2: Missing or invalid expectedBaseVersion is strictly rejected
+      console.log('\n  [Test 4.2] Missing or invalid expectedBaseVersion is strictly rejected (INVALID_EXPECTED_VERSION)');
+      // 4.2.a: undefined base version
+      let errInvalidVer1 = null;
+      try {
+        await kvStore.commitSettingsAtomic('site_settings', 'lock:site_settings', testDoc4_1, 'valid-token', undefined);
+      } catch (err) {
+        errInvalidVer1 = err;
+      }
+      assert(errInvalidVer1, 'Must throw error when expectedBaseVersion is undefined');
+      assert.strictEqual(errInvalidVer1.code, 'INVALID_EXPECTED_VERSION');
+      assert.strictEqual(errInvalidVer1.status, 400);
+
+      // 4.2.b: null base version
+      let errInvalidVer2 = null;
+      try {
+        await kvStore.commitSettingsAtomic('site_settings', 'lock:site_settings', testDoc4_1, 'valid-token', null);
+      } catch (err) {
+        errInvalidVer2 = err;
+      }
+      assert(errInvalidVer2, 'Must throw error when expectedBaseVersion is null');
+      assert.strictEqual(errInvalidVer2.code, 'INVALID_EXPECTED_VERSION');
+      assert.strictEqual(errInvalidVer2.status, 400);
+
+      // 4.2.c: non-numeric string base version
+      let errInvalidVer3 = null;
+      try {
+        await kvStore.commitSettingsAtomic('site_settings', 'lock:site_settings', testDoc4_1, 'valid-token', 'abc');
+      } catch (err) {
+        errInvalidVer3 = err;
+      }
+      assert(errInvalidVer3, 'Must throw error when expectedBaseVersion is string');
+      assert.strictEqual(errInvalidVer3.code, 'INVALID_EXPECTED_VERSION');
+      assert.strictEqual(errInvalidVer3.status, 400);
+
+      // 4.2.d: NaN base version
+      let errInvalidVer4 = null;
+      try {
+        await kvStore.commitSettingsAtomic('site_settings', 'lock:site_settings', testDoc4_1, 'valid-token', NaN);
+      } catch (err) {
+        errInvalidVer4 = err;
+      }
+      assert(errInvalidVer4, 'Must throw error when expectedBaseVersion is NaN');
+      assert.strictEqual(errInvalidVer4.code, 'INVALID_EXPECTED_VERSION');
+      assert.strictEqual(errInvalidVer4.status, 400);
+
+      // 4.2.e: non-integer float base version
+      let errInvalidVer5 = null;
+      try {
+        await kvStore.commitSettingsAtomic('site_settings', 'lock:site_settings', testDoc4_1, 'valid-token', 1.5);
+      } catch (err) {
+        errInvalidVer5 = err;
+      }
+      assert(errInvalidVer5, 'Must throw error when expectedBaseVersion is float');
+      assert.strictEqual(errInvalidVer5.code, 'INVALID_EXPECTED_VERSION');
+      assert.strictEqual(errInvalidVer5.status, 400);
+      console.log('    ✓ Missing/invalid/non-numeric expectedBaseVersion strictly rejected with 400 INVALID_EXPECTED_VERSION');
+
+      // Test 4.3: Malformed stored settings document or missing key in KV fails closed
+      console.log('\n  [Test 4.3] Malformed stored settings or missing document in KV fails closed');
+      const testLockKey = 'lock:site_settings_malformed_test';
+      const testLockToken = 'token-malformed-test-43';
+      kvStorage.set(testLockKey, testLockToken);
+
+      // 4.3.a: Corrupted non-JSON string in KV
+      kvStorage.set('malformed_settings_key', 'corrupted-non-json-string');
+      let errMalformed1 = null;
+      try {
+        await kvStore.commitSettingsAtomic('malformed_settings_key', testLockKey, { version: 2 }, testLockToken, 1);
+      } catch (err) {
+        errMalformed1 = err;
+      }
+      assert(errMalformed1, 'Must throw error when stored document is malformed');
+      assert.strictEqual(errMalformed1.code, 'MALFORMED_STORED_SETTINGS');
+      assert.strictEqual(errMalformed1.status, 502);
+
+      // 4.3.b: Stored document object missing version property
+      kvStorage.set('no_version_settings_key', { theme: 'monochrome' });
+      let errMalformed2 = null;
+      try {
+        await kvStore.commitSettingsAtomic('no_version_settings_key', testLockKey, { version: 2 }, testLockToken, 1);
+      } catch (err) {
+        errMalformed2 = err;
+      }
+      assert(errMalformed2, 'Must throw error when stored document has no version');
+      assert.strictEqual(errMalformed2.code, 'MALFORMED_STORED_SETTINGS');
+      assert.strictEqual(errMalformed2.status, 502);
+
+      // 4.3.c: Stored document unexpectedly missing
+      kvStorage.delete('missing_settings_key');
+      let errMissingDoc = null;
+      try {
+        await kvStore.commitSettingsAtomic('missing_settings_key', testLockKey, { version: 2 }, testLockToken, 1);
+      } catch (err) {
+        errMissingDoc = err;
+      }
+      assert(errMissingDoc, 'Must throw error when stored document is missing');
+      assert.strictEqual(errMissingDoc.code, 'DOCUMENT_MISSING');
+      assert.strictEqual(errMissingDoc.status, 409);
+
+      // Clean up test keys
+      kvStorage.delete(testLockKey);
+      kvStorage.delete('malformed_settings_key');
+      kvStorage.delete('no_version_settings_key');
+      console.log('    ✓ Malformed stored document or missing key fails closed without writing');
+
+      // Test 4.4: First-time settings initialization racing with a concurrent write (SET NX)
+      console.log('\n  [Test 4.4] First-time initialization racing with concurrent write uses atomic SET NX');
+      // Clear key from KV and reset in-memory cache
+      kvStorage.delete('site_settings');
+      invalidateSettingsCache();
+
+      const concurrentWinnerDoc = {
+        version: 88,
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'concurrent_fast_writer',
+        global: { theme: 'aurora', customThemeName: 'WinnerCustomTheme' }
+      };
+
+      // Instruct mock server to inject concurrentWinnerDoc on the first SET NX received
+      injectConcurrentWriteOnNextNX = concurrentWinnerDoc;
+
+      // getSiteSettingsAsync will:
+      // 1. Observe remote === null
+      // 2. Execute kvStore.set('site_settings', initialDoc, { nx: true })
+      // 3. Mock server injects concurrentWinnerDoc into KV right before evaluating NX
+      // 4. NX condition fails because key now exists!
+      // 5. getSiteSettingsAsync reads back authoritative value from KV
+      const resultDoc = await getSiteSettingsAsync();
+
+      assert.strictEqual(resultDoc.version, 88, 'Result must be the concurrent winning version (88)');
+      assert.strictEqual(
+        resultDoc.global.customThemeName,
+        'WinnerCustomTheme',
+        'Result must preserve the winning concurrent write'
+      );
+
+      // Verify that KV store still holds the winning document (was not overwritten by defaults)
+      const storedInKV = kvStorage.get('site_settings');
+      assert.strictEqual(storedInKV.version, 88, 'KV store must still hold version 88');
+      assert.strictEqual(
+        storedInKV.global.customThemeName,
+        'WinnerCustomTheme',
+        'KV store must not have been overwritten by default settings'
+      );
+      console.log('    ✓ Atomic SET NX prevented initial defaults from overwriting concurrent successful write');
+
+      // Test 4.5: Any production caller of saveSiteSettingsSync is blocked when shared KV is configured
+      console.log('\n  [Test 4.5] saveSiteSettingsSync() is strictly blocked when shared KV is configured');
+      assert.strictEqual(isSharedKVConfigured(), true, 'Shared KV must be configured for this test');
+
+      let syncErrorThrown = null;
+      try {
+        saveSiteSettingsSync({ global: { theme: 'day' } }, 'unauthorized_sync_caller');
+      } catch (err) {
+        syncErrorThrown = err;
+      }
+      assert(syncErrorThrown, 'Must throw error when saveSiteSettingsSync is called with shared KV configured');
+      assert.strictEqual(syncErrorThrown.code, 'SYNC_PERSISTENCE_DISALLOWED');
+      assert.strictEqual(syncErrorThrown.status, 500);
+
+      // Verify KV was not modified
+      const currentKVSettings = kvStorage.get('site_settings');
+      assert.notStrictEqual(currentKVSettings.global?.theme, 'day', 'KV settings must not be modified by sync write');
+      console.log('    ✓ saveSiteSettingsSync() threw 500 SYNC_PERSISTENCE_DISALLOWED to prevent bypassing lock and atomic checks');
+
+      // Test 4.6: Mandatory server-side lock token verification protects against lock loss even if heartbeat was active
+      console.log('\n  [Test 4.6] Mandatory server-side lock token check prevents commit after lock loss');
+      const leaseLockKey = 'lock:site_settings_lease_test';
+      const myToken = await kvStore.acquireLock(leaseLockKey, 4);
+      const activeLease = kvStore.createLockLease(leaseLockKey, myToken, 4, 1500);
+
+      // Heartbeat is active, but another worker steals the lock key in KV
+      kvStorage.set(leaseLockKey, 'stolen-by-worker-B');
+
+      // Attempt commit using myToken
+      let stolenCommitError = null;
+      try {
+        await kvStore.commitSettingsAtomic('site_settings', leaseLockKey, { version: 89 }, myToken, 88);
+      } catch (err) {
+        stolenCommitError = err;
+      } finally {
+        activeLease.stop();
+        kvStorage.delete(leaseLockKey);
+      }
+
+      assert(stolenCommitError, 'Must fail commit when lock was stolen');
+      assert.strictEqual(stolenCommitError.code, 'LOCK_LOST');
+      assert.strictEqual(stolenCommitError.status, 409);
+      console.log('    ✓ Atomic server-side lock token check rejected commit with 409 LOCK_LOST after lock theft');
 
       console.log('\n=======================================================');
       console.log('✅ ALL SESSION REVOCATION, LOCK & PERSISTENCE TESTS PASSED!');

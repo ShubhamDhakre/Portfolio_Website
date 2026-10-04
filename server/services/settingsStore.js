@@ -393,18 +393,33 @@ export async function getSiteSettingsAsync(options = {}) {
     if (shouldFetchKV) {
       try {
         const remote = await kvStore.get('site_settings');
-        if (remote && typeof remote === 'object') {
+        if (remote !== null && typeof remote === 'object') {
           const loadedDoc = normalizeSettingsDoc(remote);
           inMemorySettingsCache = loadedDoc;
           lastKVSyncTime = now;
           return loadedDoc;
         } else if (remote === null) {
           // KV store is configured but key not yet initialized (first startup)
+          // Use atomic initialization (SET NX) to prevent overwriting a concurrent successful write
           const initialDoc = getSiteSettings();
-          await kvStore.set('site_settings', initialDoc);
-          inMemorySettingsCache = initialDoc;
-          lastKVSyncTime = now;
-          return initialDoc;
+          await kvStore.set('site_settings', initialDoc, { nx: true });
+          // Read authoritative value back in case a concurrent initialization or write won the race
+          const authoritative = await kvStore.get('site_settings');
+          if (authoritative !== null && typeof authoritative !== 'object') {
+            const err = new Error('Authoritative settings document in shared KV is malformed.');
+            err.status = 502;
+            err.code = 'MALFORMED_STORED_SETTINGS';
+            throw err;
+          }
+          const loadedDoc = normalizeSettingsDoc(authoritative || initialDoc);
+          inMemorySettingsCache = loadedDoc;
+          lastKVSyncTime = Date.now();
+          return loadedDoc;
+        } else {
+          const err = new Error('Authoritative settings document in shared KV is malformed.');
+          err.status = 502;
+          err.code = 'MALFORMED_STORED_SETTINGS';
+          throw err;
         }
       } catch (err) {
         // Authoritative store failed. Fail closed: do not serve stale local defaults as authoritative!
@@ -465,21 +480,26 @@ function buildNextSettingsDoc(current, updatedFields, updatedBy = 'admin') {
 }
 
 /**
- * Synchronous write of global site settings to local disk with asynchronous broadcast to shared KV
+ * Synchronous write of global site settings for local development and standalone mode.
+ * In production when shared KV is configured, synchronous writes are disallowed to prevent
+ * bypassing distributed lock ownership and atomic version fencing.
  */
 export function saveSiteSettingsSync(updatedFields, updatedBy = 'admin') {
+  if (isSharedKVConfigured()) {
+    const err = new Error(
+      'Synchronous settings persistence is not permitted when shared KV is configured. Use saveSiteSettings() to ensure distributed lock and atomic version fencing.'
+    );
+    err.status = 500;
+    err.code = 'SYNC_PERSISTENCE_DISALLOWED';
+    throw err;
+  }
+
   const current = getSiteSettings();
   const newDoc = buildNextSettingsDoc(current, updatedFields, updatedBy);
 
   inMemorySettingsCache = newDoc;
   lastKVSyncTime = Date.now();
   writeSettingsToDisk(newDoc);
-
-  if (isSharedKVConfigured()) {
-    kvStore.set('site_settings', newDoc).catch((err) => {
-      console.warn('[STORAGE] Async write to shared KV store failed:', err.message);
-    });
-  }
 
   return newDoc;
 }
