@@ -18,18 +18,23 @@ const DEFAULT_CONTENT = {
 function getLocalCache() {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (!raw) return { settings: DEFAULT_PERFORMANCE_CONFIG, content: DEFAULT_CONTENT, isPreviewActive: false };
+    if (!raw) return { settings: DEFAULT_PERFORMANCE_CONFIG, content: DEFAULT_CONTENT, isPreviewActive: false, version: null, updatedAt: null };
     const parsed = JSON.parse(raw);
     const local = parsed.localSettings || {};
     const notesObj = parsed.notes && typeof parsed.notes === 'object' ? parsed.notes : {};
     const isPreview = Boolean(parsed.previewMode);
+    const cachedSettings = !isPreview && parsed.settings
+      ? { ...DEFAULT_PERFORMANCE_CONFIG, ...parsed.settings }
+      : { ...DEFAULT_PERFORMANCE_CONFIG, ...parsed, ...local };
     return {
-      settings: { ...DEFAULT_PERFORMANCE_CONFIG, ...parsed, ...local },
+      settings: cachedSettings,
       content: { ...DEFAULT_CONTENT, ...(parsed.content || {}), ...notesObj },
-      isPreviewActive: isPreview
+      isPreviewActive: isPreview,
+      version: typeof parsed.version === 'number' ? parsed.version : null,
+      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : null
     };
   } catch {
-    return { settings: DEFAULT_PERFORMANCE_CONFIG, content: DEFAULT_CONTENT, isPreviewActive: false };
+    return { settings: DEFAULT_PERFORMANCE_CONFIG, content: DEFAULT_CONTENT, isPreviewActive: false, version: null, updatedAt: null };
   }
 }
 
@@ -43,8 +48,8 @@ export function useGlobalSiteSettings() {
   const cache = getLocalCache();
   const [settings, setSettings] = useState(() => cache.settings);
   const [content, setContent] = useState(() => cache.content);
-  const [version, setVersion] = useState(1);
-  const [updatedAt, setUpdatedAt] = useState(() => new Date().toISOString());
+  const [version, setVersion] = useState(() => cache.version || null);
+  const [updatedAt, setUpdatedAt] = useState(() => cache.updatedAt || null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [serverContent, setServerContent] = useState(null);
   const [serverGlobalSettings, setServerGlobalSettings] = useState(null);
@@ -57,15 +62,30 @@ export function useGlobalSiteSettings() {
       setServerGlobalSettings(serverGlobal);
 
       const latestCache = getLocalCache();
-      // If preview mode is NOT active, adopt server global settings
+      // If preview mode is NOT active, adopt server global settings (authoritative server wins)
       if (!latestCache.isPreviewActive) {
         if (serverGlobal && typeof serverGlobal === 'object') {
-          setSettings((prev) => ({ ...prev, ...serverGlobal }));
+          setSettings(serverGlobal);
         }
         if (data.content && typeof data.content === 'object') {
           setServerContent(data.content);
-          setContent((prev) => ({ ...prev, ...data.content }));
+          setContent(data.content);
         }
+
+        // Update localStorage cache with authoritative server configuration
+        try {
+          const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+          const parsed = raw ? JSON.parse(raw) : {};
+          const updatedCache = {
+            ...parsed,
+            version: data.version,
+            updatedAt: data.updatedAt,
+            settings: serverGlobal,
+            content: data.content || parsed.content,
+            previewMode: false
+          };
+          localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedCache));
+        } catch {}
       } else {
         // Preview mode is active locally - retain local overrides for this device only
         if (data.content && typeof data.content === 'object') {

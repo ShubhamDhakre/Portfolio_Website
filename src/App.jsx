@@ -42,6 +42,7 @@ export default function App() {
     content: globalContent,
     version: globalVersion,
     updatedAt: globalUpdatedAt,
+    isLoaded: isServerSettingsLoaded,
     refreshGlobalSettings
   } = useGlobalSiteSettings();
 
@@ -67,13 +68,16 @@ export default function App() {
 
     if (isPreview) return;
 
-    // If globalVersion updated (admin published new settings), or visitor has default/initial selection:
-    const isNewPublication = globalVersion && lastAppliedGlobalVersionRef.current !== globalVersion;
-    if (isNewPublication || !isExplicitlySelected) {
-      lastAppliedGlobalVersionRef.current = globalVersion;
-      setTheme(serverTheme, false);
+    // Once authoritative server configuration is loaded:
+    // If a new publication version is detected or visitor has not explicitly selected a personal theme
+    if (isServerSettingsLoaded) {
+      const isNewPublication = globalVersion && lastAppliedGlobalVersionRef.current !== globalVersion;
+      if (isNewPublication || !isExplicitlySelected) {
+        lastAppliedGlobalVersionRef.current = globalVersion;
+        setTheme(serverTheme, false);
+      }
     }
-  }, [perfSettings?.theme, globalVersion, setTheme, isExplicitlySelected]);
+  }, [perfSettings?.theme, globalVersion, setTheme, isExplicitlySelected, isServerSettingsLoaded]);
 
   // Hidden developer console state (Navbar trigger / Ctrl+K)
   const [isEasterEggOpen, setIsEasterEggOpen] = useState(false);

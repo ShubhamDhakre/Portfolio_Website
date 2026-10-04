@@ -49,6 +49,11 @@ export function useTheme() {
         try {
           localStorage.setItem('shubham_portfolio_theme_explicit', 'true');
         } catch {}
+      } else {
+        setIsExplicitlySelected(false);
+        try {
+          localStorage.removeItem('shubham_portfolio_theme_explicit');
+        } catch {}
       }
     }
   }, []);

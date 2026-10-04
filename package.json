@@ -11,7 +11,7 @@
     "build": "vite build",
     "start": "node server/index.js",
     "hash-password": "node server/scripts/hashPassword.js",
-    "test": "node server/tests/auth.test.js && node server/tests/admin_auth_hardening.test.js && NODE_ENV=test node server/tests/security.test.js && NODE_ENV=test node server/tests/csrf_state_origin.test.js && node server/tests/kv_cross_instance.test.js && node server/tests/session_revocation_and_lock.test.js && node server/tests/custom_cursor_and_frontend_audit.test.js",
+    "test": "node server/tests/auth.test.js && node server/tests/admin_auth_hardening.test.js && NODE_ENV=test node server/tests/security.test.js && NODE_ENV=test node server/tests/csrf_state_origin.test.js && node server/tests/kv_cross_instance.test.js && node server/tests/session_revocation_and_lock.test.js && node server/tests/custom_cursor_and_frontend_audit.test.js && node server/tests/settings_persistence_precedence.test.js",
     "lint": "oxlint",
     "preview": "vite preview"
   },

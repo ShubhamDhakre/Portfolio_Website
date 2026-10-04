@@ -11,6 +11,7 @@ import {
   fetchAdminSettings,
   saveAdminSettings
 } from '../../services/siteSettingsApi';
+import { VALID_THEMES } from '../../hooks/useTheme';
 import './PrivateControlLayer.css';
 
 const STORAGE_KEY = 'portfolio_private_workspace';
@@ -98,7 +99,9 @@ function loadPreferences() {
 // Safe localStorage saver - writes structured schema (v2) while maintaining flat compatibility
 function savePreferences(prefs, previewMode = false) {
   try {
+    const isPreview = Boolean(previewMode);
     const structuredPayload = {
+      ...prefs,
       version: 2,
       localSettings: {
         theme: prefs.theme || 'default',
@@ -126,8 +129,7 @@ function savePreferences(prefs, previewMode = false) {
         currentExperiment: prefs.currentExperiment || '',
         developerNote: prefs.developerNote || ''
       },
-      previewMode: Boolean(previewMode !== undefined ? previewMode : prefs.previewMode),
-      ...prefs
+      previewMode: isPreview
     };
     localStorage.setItem(STORAGE_KEY, JSON.stringify(structuredPayload));
   } catch (err) {
@@ -152,28 +154,34 @@ export default function PrivateControlLayer({
 }) {
   const [prefs, setPrefs] = useState(() => {
     const loaded = loadPreferences();
-    const baseTheme = loaded.theme || theme || 'default';
-    const serverDevPerf = globalSettings?.devPerformance || globalSettings?.global?.devPerformance;
+    const isPreview = Boolean(loaded.previewMode);
+    const effectiveGlobal = !isPreview && globalSettings && typeof globalSettings === 'object'
+      ? globalSettings
+      : {};
+    const baseTheme = effectiveGlobal.theme || loaded.theme || theme || 'default';
+    const serverDevPerf = effectiveGlobal.devPerformance || globalSettings?.devPerformance || globalSettings?.global?.devPerformance;
     const initialDevPerf = serverDevPerf
       ? { ...DEFAULT_DEV_PERFORMANCE, ...serverDevPerf }
       : (loaded.devPerformance || DEFAULT_DEV_PERFORMANCE);
 
+    const merged = {
+      ...loaded,
+      ...effectiveGlobal,
+      theme: baseTheme,
+      devPerformance: initialDevPerf,
+      previewMode: isPreview
+    };
+
     if (globalContent) {
       return {
-        ...loaded,
-        theme: baseTheme,
-        devPerformance: initialDevPerf,
-        notes: loaded.notes || globalContent.notes || DEFAULT_PREFERENCES.notes,
-        currentFocus: loaded.currentFocus || globalContent.currentFocus || DEFAULT_PREFERENCES.currentFocus,
-        currentExperiment: loaded.currentExperiment || globalContent.currentExperiment || DEFAULT_PREFERENCES.currentExperiment,
-        developerNote: loaded.developerNote || globalContent.developerNote || DEFAULT_PREFERENCES.developerNote,
+        ...merged,
+        notes: isPreview ? (loaded.notes || globalContent.notes || DEFAULT_PREFERENCES.notes) : (globalContent.notes || loaded.notes || DEFAULT_PREFERENCES.notes),
+        currentFocus: isPreview ? (loaded.currentFocus || globalContent.currentFocus || DEFAULT_PREFERENCES.currentFocus) : (globalContent.currentFocus || loaded.currentFocus || DEFAULT_PREFERENCES.currentFocus),
+        currentExperiment: isPreview ? (loaded.currentExperiment || globalContent.currentExperiment || DEFAULT_PREFERENCES.currentExperiment) : (globalContent.currentExperiment || loaded.currentExperiment || DEFAULT_PREFERENCES.currentExperiment),
+        developerNote: isPreview ? (loaded.developerNote || globalContent.developerNote || DEFAULT_PREFERENCES.developerNote) : (globalContent.developerNote || loaded.developerNote || DEFAULT_PREFERENCES.developerNote),
       };
     }
-    return {
-      ...loaded,
-      theme: baseTheme,
-      devPerformance: initialDevPerf
-    };
+    return merged;
   });
   const [activeTab, setActiveTab] = useState('performance'); // 'performance' | 'themes' | 'backgrounds' | 'notes' | 'environment' | 'console' | 'system' | 'log'
 
@@ -533,7 +541,7 @@ export default function PrivateControlLayer({
       logInteraction(`Local preview theme: ${themeKey}`);
     } else {
       updatePref('theme', themeKey);
-      if (setTheme) setTheme(themeKey);
+      if (setTheme) setTheme(themeKey, false);
       showToast(`GLOBAL STAGING: Theme "${themeKey}" ready to publish`, 'info');
       logInteraction(`Staged global theme: ${themeKey}`);
     }
@@ -671,19 +679,48 @@ export default function PrivateControlLayer({
 
       const result = await saveAdminSettings(payload);
       if (result.success && result.data) {
-        setServerVersion(result.data.version);
-        setServerUpdatedAt(result.data.updatedAt);
+        const publishedVersion = result.data.version;
+        const publishedUpdatedAt = result.data.updatedAt;
+        setServerVersion(publishedVersion);
+        setServerUpdatedAt(publishedUpdatedAt);
         setHasConflict(false);
         setIsPreviewActive(false);
 
-        savePreferences(prefs);
+        const updatedPrefs = { ...prefs, previewMode: false };
+        setPrefs(updatedPrefs);
+        savePreferences(updatedPrefs, false);
 
-        if (refreshGlobalSettings) {
-          refreshGlobalSettings();
+        // Invalidate and update localStorage cache with authoritative published configuration
+        try {
+          const cachePayload = {
+            version: publishedVersion,
+            updatedAt: publishedUpdatedAt,
+            settings: payload.global,
+            content: payload.content,
+            previewMode: false,
+            localSettings: payload.global,
+            notes: payload.content
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cachePayload));
+        } catch {}
+
+        // Align theme state with published global theme
+        if (prefs.theme && VALID_THEMES.includes(prefs.theme)) {
+          try {
+            localStorage.setItem('shubham_portfolio_theme', prefs.theme);
+            localStorage.removeItem('shubham_portfolio_theme_explicit');
+          } catch {}
+          if (setTheme) {
+            setTheme(prefs.theme, false);
+          }
         }
 
-        showToast(`GLOBAL SETTINGS PUBLISHED // VERSION v${result.data.version}`, 'success');
-        logInteraction(`Published global configuration v${result.data.version}`);
+        if (refreshGlobalSettings) {
+          await refreshGlobalSettings();
+        }
+
+        showToast(`GLOBAL SETTINGS PUBLISHED // VERSION v${publishedVersion}`, 'success');
+        logInteraction(`Published global configuration v${publishedVersion}`);
       }
     } catch (err) {
       showToast(err.message || 'CONFIGURATION SAVE FAILED', 'error', 4500);
@@ -744,7 +781,11 @@ export default function PrivateControlLayer({
           return next;
         });
 
-        if (setTheme) setTheme('default');
+        if (setTheme) setTheme('default', false);
+        try {
+          localStorage.setItem('shubham_portfolio_theme', 'default');
+          localStorage.removeItem('shubham_portfolio_theme_explicit');
+        } catch {}
         if (onPrefsChange) onPrefsChange({ ...resetPayload.global, devPerformance: { ...DEFAULT_DEV_PERFORMANCE } });
         if (refreshGlobalSettings) refreshGlobalSettings();
 
