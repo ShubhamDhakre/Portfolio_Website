@@ -61,6 +61,16 @@
   will-change: transform;
 }
 
+/* Optimized compositing during active tilt interaction:
+   Bypass heavy backdrop blur recomputation and blend operations,
+   using a performant tinted glass surface while preserving the specular sheen,
+   borders, and depth. Normal glass appearance is preserved at rest. */
+.contact-card.contact-tilt-card.is-tilting {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--code-bg);
+}
+
 .contact-card.contact-tilt-card.tilt-disabled {
   transform: none !important;
   transition: border-color var(--transition-normal), box-shadow var(--transition-normal) !important;
@@ -75,12 +85,12 @@
   opacity: 0;
   background: radial-gradient(
     circle 340px at var(--glare-x, 50%) var(--glare-y, 50%),
-    rgba(255, 255, 255, 0.42) 0%,
-    rgba(255, 255, 255, 0.14) 35%,
-    rgba(109, 91, 166, 0.08) 65%,
+    rgba(255, 255, 255, 0.32) 0%,
+    rgba(255, 255, 255, 0.12) 35%,
+    rgba(109, 91, 166, 0.06) 65%,
     transparent 80%
   );
-  mix-blend-mode: overlay;
+  mix-blend-mode: normal;
   transition: opacity 0.25s ease-out;
   z-index: 2;
 }

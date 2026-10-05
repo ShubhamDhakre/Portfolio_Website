@@ -71,16 +71,22 @@ export default function CustomCursor({ cursorEnabled = true }) {
     let lastBadge = '';
     let lastHover = false;
     let pendingTarget = null;
+    let spotlightEl = null;
 
     const animateCursor = () => {
-      // Coalesce ambient spotlight CSS variables smoothly in RAF
+      // Coalesce ambient spotlight CSS variables smoothly in RAF scoped to .mouse-spotlight-layer
       const roundX = Math.round(targetX);
       const roundY = Math.round(targetY);
       if (roundX !== lastCssX || roundY !== lastCssY) {
         lastCssX = roundX;
         lastCssY = roundY;
-        document.documentElement.style.setProperty('--mouse-x', `${roundX}px`);
-        document.documentElement.style.setProperty('--mouse-y', `${roundY}px`);
+        if (!spotlightEl || !spotlightEl.isConnected) {
+          spotlightEl = document.querySelector('.mouse-spotlight-layer');
+        }
+        if (spotlightEl) {
+          spotlightEl.style.setProperty('--mouse-x', `${roundX}px`);
+          spotlightEl.style.setProperty('--mouse-y', `${roundY}px`);
+        }
       }
 
       // Check contextual cursor attributes coalesced in RAF instead of raw mouse event

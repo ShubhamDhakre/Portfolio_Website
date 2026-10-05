@@ -73,6 +73,7 @@ function Navbar({
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
             setActiveSection(entry.target.id);
+            window.dispatchEvent(new CustomEvent('sectionchange', { detail: entry.target.id }));
           }
         });
       },

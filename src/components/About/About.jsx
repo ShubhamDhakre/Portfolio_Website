@@ -289,9 +289,9 @@ function About({ onStateChange }) {
           <div className="about-card about-card-sub reveal-on-scroll">
             <div className="card-header-icon">⚡</div>
             <div className="card-sub-meta">PHILOSOPHY // ZERO BLOAT</div>
-            <h4 className="card-sub-title">Hands-On Engineering</h4>
+            <h4 className="card-sub-title">Purposeful Tools. Lean Architecture.</h4>
             <p className="card-sub-text">
-              Striving for clean architecture, understandable code, and interfaces that feel fluid and alive without third-party framework overhead.
+              Choosing the right frameworks and libraries to build maintainable, efficient experiences without unnecessary complexity.
             </p>
           </div>
 

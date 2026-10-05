@@ -502,3 +502,74 @@
     height: 250px;
   }
 }
+
+/* ==========================================================================
+   THREE.JS SUSPENSE FALLBACK PLACEHOLDER
+   - Matches space-inspired Digital Core orbital design
+   - Lightweight pure CSS geometry (zero initial JS parse delay)
+   ========================================================================== */
+.three-scene-fallback {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  position: relative;
+}
+
+.three-fallback-core {
+  position: relative;
+  width: 140px;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.three-fallback-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px dashed var(--accent-highlight, #8B7BB8);
+  opacity: 0.35;
+}
+
+.three-fallback-ring.ring-outer {
+  width: 130px;
+  height: 130px;
+  animation: fallbackSpin 12s linear infinite;
+  border-color: var(--accent-primary, #6D5BA6);
+}
+
+.three-fallback-ring.ring-inner {
+  width: 90px;
+  height: 90px;
+  animation: fallbackSpinReverse 8s linear infinite;
+  border-color: var(--accent-soft, #9A8AC8);
+}
+
+.three-fallback-nucleus {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-xs);
+  background: var(--accent-primary, #6D5BA6);
+  opacity: 0.55;
+  transform: rotate(45deg);
+  animation: fallbackPulse 3s ease-in-out infinite;
+  box-shadow: 0 0 20px var(--accent-glow, rgba(128, 110, 192, 0.28));
+}
+
+@keyframes fallbackSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fallbackSpinReverse {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes fallbackPulse {
+  0%, 100% { transform: rotate(45deg) scale(0.9); opacity: 0.45; }
+  50% { transform: rotate(45deg) scale(1.1); opacity: 0.7; }
+}

@@ -1,6 +1,58 @@
-import React from 'react';
-import ThreeScene from '../ThreeScene/ThreeScene';
+import React, { useState, lazy, Suspense, Component } from 'react';
 import './Hero.css';
+
+const ThreeScene = lazy(() => import('../ThreeScene/ThreeScene'));
+
+function ThreeSceneFallback() {
+  return (
+    <div
+      className="three-scene-container three-scene-fallback"
+      role="status"
+      aria-label="Loading 3D Digital Core"
+    >
+      <div className="three-fallback-core">
+        <div className="three-fallback-ring ring-outer" />
+        <div className="three-fallback-ring ring-inner" />
+        <div className="three-fallback-nucleus" />
+      </div>
+      <span className="core-keyboard-hint" aria-hidden="true">
+        INITIALIZING CORE...
+      </span>
+    </div>
+  );
+}
+
+class ThreeSceneErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.warn('[ThreeScene] Failed to load 3D Digital Core:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="three-scene-container three-scene-fallback error" role="status">
+          <div className="three-fallback-core">
+            <div className="three-fallback-ring ring-outer" />
+            <div className="three-fallback-nucleus" />
+          </div>
+          <span className="core-keyboard-hint" style={{ opacity: 1 }}>
+            DIGITAL CORE // STANDBY
+          </span>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /**
  * Hero
@@ -23,7 +75,7 @@ function Hero({
     }
   };
 
-  const [isPillHovered, setIsPillHovered] = React.useState(false);
+  const [isPillHovered, setIsPillHovered] = useState(false);
 
   return (
     <section id="hero" className="hero-section">
@@ -126,14 +178,18 @@ function Hero({
         {/* Right Column: Three.js Digital Core */}
         <div className="hero-visual">
           <div className="visual-wrapper">
-            <ThreeScene
-              theme={theme}
-              scrollProgress={scrollProgress}
-              onStateChange={onStateChange}
-              onUnlockPrivateLayer={onUnlockPrivateLayer}
-              isPrivateModeActive={isPrivateModeActive}
-              perfSettings={perfSettings}
-            />
+            <ThreeSceneErrorBoundary>
+              <Suspense fallback={<ThreeSceneFallback />}>
+                <ThreeScene
+                  theme={theme}
+                  scrollProgress={scrollProgress}
+                  onStateChange={onStateChange}
+                  onUnlockPrivateLayer={onUnlockPrivateLayer}
+                  isPrivateModeActive={isPrivateModeActive}
+                  perfSettings={perfSettings}
+                />
+              </Suspense>
+            </ThreeSceneErrorBoundary>
           </div>
         </div>
       </div>

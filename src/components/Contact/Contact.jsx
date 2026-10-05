@@ -49,6 +49,7 @@ function Contact({ tiltSettings = DEFAULT_CONTACT_TILT }) {
     }
 
     let cardRect = null;
+    let leaveTimer = null;
     const updateRect = () => {
       if (card) cardRect = card.getBoundingClientRect();
     };
@@ -58,7 +59,12 @@ function Contact({ tiltSettings = DEFAULT_CONTACT_TILT }) {
     };
 
     const onPointerEnter = () => {
+      if (leaveTimer) {
+        clearTimeout(leaveTimer);
+        leaveTimer = null;
+      }
       updateRect();
+      card.classList.add('is-tilting');
       card.style.willChange = 'transform';
       card.style.transition = `transform ${speed}ms cubic-bezier(0.03, 0.98, 0.52, 0.99)`;
     };
@@ -97,6 +103,12 @@ function Contact({ tiltSettings = DEFAULT_CONTACT_TILT }) {
       if (glare) {
         glare.style.opacity = '0';
       }
+      if (leaveTimer) clearTimeout(leaveTimer);
+      leaveTimer = setTimeout(() => {
+        if (card && !card.matches(':hover')) {
+          card.classList.remove('is-tilting');
+        }
+      }, returnSpeed);
     };
 
     card.addEventListener('pointerenter', onPointerEnter);
@@ -107,11 +119,13 @@ function Contact({ tiltSettings = DEFAULT_CONTACT_TILT }) {
 
     return () => {
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      if (leaveTimer) clearTimeout(leaveTimer);
       card.removeEventListener('pointerenter', onPointerEnter);
       card.removeEventListener('pointermove', onPointerMove);
       card.removeEventListener('pointerleave', onPointerLeave);
       window.removeEventListener('scroll', handleInvalidateRect);
       window.removeEventListener('resize', handleInvalidateRect);
+      card.classList.remove('is-tilting');
       card.style.transform = '';
       card.style.transition = '';
       if (glare) glare.style.opacity = '0';

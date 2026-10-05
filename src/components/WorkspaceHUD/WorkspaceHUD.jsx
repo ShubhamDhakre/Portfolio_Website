@@ -48,30 +48,17 @@ function WorkspaceHUD({ activeSection: activeSectionProp, customFocus = null }) 
   const activeSection = activeSectionProp || internalSection;
 
   useEffect(() => {
-    if (activeSectionProp) return; // If explicitly controlled from outside, skip internal observer
+    if (activeSectionProp) return; // If explicitly controlled from outside, skip listener
 
-    const sectionIds = ['hero', 'about', 'skills', 'projects', 'experiments', 'contact'];
-    const elements = sectionIds.map((id) => document.getElementById(id)).filter(Boolean);
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setInternalSection(entry.target.id);
-          }
-        });
-      },
-      {
-        root: null,
-        rootMargin: '-30% 0px -40% 0px',
-        threshold: 0.05,
+    const handleSectionChange = (e) => {
+      if (e.detail) {
+        setInternalSection(e.detail);
       }
-    );
+    };
 
-    elements.forEach((el) => observer.observe(el));
+    window.addEventListener('sectionchange', handleSectionChange, { passive: true });
     return () => {
-      elements.forEach((el) => observer.unobserve(el));
-      observer.disconnect();
+      window.removeEventListener('sectionchange', handleSectionChange);
     };
   }, [activeSectionProp]);
 

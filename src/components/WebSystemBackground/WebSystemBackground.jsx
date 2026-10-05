@@ -20,6 +20,11 @@ function WebSystemBackground({
 }) {
   const canvasRef = useRef(null);
   const mouseRef = useRef({ x: -9999, y: -9999 });
+  const reducedMotionRef = useRef(
+    typeof window !== 'undefined' && window.matchMedia
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false
+  );
 
   const effectiveBgType = backgroundType || perfSettings.background || perfSettings.backgroundType || 'digital-web';
   const backgroundEnabled = perfSettings.backgroundEnabled !== false;
@@ -69,7 +74,35 @@ function WebSystemBackground({
 
     window.addEventListener('resize', handleResize, { passive: true });
 
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const mediaQuery =
+      typeof window !== 'undefined' && window.matchMedia
+        ? window.matchMedia('(prefers-reduced-motion: reduce)')
+        : null;
+
+    if (mediaQuery) {
+      reducedMotionRef.current = mediaQuery.matches;
+    }
+
+    const handleMotionChange = (e) => {
+      reducedMotionRef.current =
+        typeof e?.matches === 'boolean'
+          ? e.matches
+          : (mediaQuery ? mediaQuery.matches : false);
+
+      if (!document.hidden && !animationFrameId) {
+        lastFrameTime = performance.now();
+        animationFrameId = requestAnimationFrame(render);
+      }
+    };
+
+    if (mediaQuery) {
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleMotionChange);
+      } else if (mediaQuery.addListener) {
+        mediaQuery.addListener(handleMotionChange);
+      }
+    }
+
     const isMobile = width < 768;
 
     // Theme color extractors
@@ -222,6 +255,7 @@ function WebSystemBackground({
 
       ctx.clearRect(0, 0, width, height);
 
+      const prefersReducedMotion = reducedMotionRef.current;
       const mouseX = mouseRef.current.x;
       const mouseY = mouseRef.current.y;
       const hasActiveMouse = mouseX >= 0 && mouseY >= 0;
@@ -426,6 +460,13 @@ function WebSystemBackground({
     render();
 
     return () => {
+      if (mediaQuery) {
+        if (mediaQuery.removeEventListener) {
+          mediaQuery.removeEventListener('change', handleMotionChange);
+        } else if (mediaQuery.removeListener) {
+          mediaQuery.removeListener(handleMotionChange);
+        }
+      }
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('visibilitychange', handleVisibilityChange);

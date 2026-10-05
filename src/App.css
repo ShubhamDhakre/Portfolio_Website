@@ -67,34 +67,26 @@ section {
   --reveal-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Base keyframes for 3D and traditional reveal modes */
+/* Base keyframes for 3D and traditional reveal modes (Optimized: composite-only transform + opacity) */
 @keyframes revealOnScroll {
   from {
     opacity: 0;
-    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 35deg) * -1)) scale(var(--reveal-scale, 0.75));
-    clip-path: circle(0% at 50% 50%);
-    filter: blur(var(--reveal-blur, 10px));
+    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 30deg) * -1)) scale(var(--reveal-scale, 0.8));
   }
   to {
     opacity: 1;
     transform: perspective(var(--reveal-perspective, 1400px)) rotateY(0deg) scale(1);
-    clip-path: circle(150% at 50% 50%);
-    filter: blur(0px);
   }
 }
 
 @keyframes revealOnScroll3DCircle {
   from {
     opacity: 0;
-    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 35deg) * -1)) scale(var(--reveal-scale, 0.75));
-    clip-path: circle(0% at 50% 50%);
-    filter: blur(var(--reveal-blur, 10px));
+    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 30deg) * -1)) scale(var(--reveal-scale, 0.8));
   }
   to {
     opacity: 1;
     transform: perspective(var(--reveal-perspective, 1400px)) rotateY(0deg) scale(1);
-    clip-path: circle(150% at 50% 50%);
-    filter: blur(0px);
   }
 }
 
@@ -102,12 +94,10 @@ section {
   from {
     opacity: 0;
     transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 30deg) * -1)) scale(var(--reveal-scale, 0.8));
-    filter: blur(var(--reveal-blur, 8px));
   }
   to {
     opacity: 1;
     transform: perspective(var(--reveal-perspective, 1400px)) rotateY(0deg) scale(1);
-    filter: blur(0px);
   }
 }
 
@@ -115,12 +105,10 @@ section {
   from {
     opacity: 0;
     transform: translateY(var(--reveal-distance, 24px));
-    filter: none;
   }
   to {
     opacity: 1;
     transform: translateY(0);
-    filter: none;
   }
 }
 
@@ -128,19 +116,17 @@ section {
   from {
     opacity: 0;
     transform: scale(var(--reveal-scale, 0.94));
-    filter: none;
   }
   to {
     opacity: 1;
     transform: scale(1);
-    filter: none;
   }
 }
 
 /* ==========================================================================
    NATIVE CSS SCROLL-DRIVEN TIMELINE IMPLEMENTATION
    - Strictly scoped to .reveal-on-scroll content components
-   - Never traps whole sections in persistent blur or perspective distortion
+   - GPU compositor-driven transform and opacity (zero layout or paint costs)
    ========================================================================== */
 @supports (animation-timeline: view()) {
   .reveal-on-scroll {
@@ -188,10 +174,10 @@ section {
 @supports not (animation-timeline: view()) {
   .reveal-on-scroll {
     opacity: 0;
-    transition-property: opacity, transform, filter, clip-path;
+    transition-property: opacity, transform;
     transition-duration: var(--reveal-duration, 700ms);
     transition-timing-function: var(--reveal-timing-function, cubic-bezier(0.16, 1, 0.3, 1));
-    will-change: opacity, transform, filter;
+    will-change: opacity, transform;
   }
 
   /* Initial unrevealed styles */
@@ -199,33 +185,26 @@ section {
   :root:not([data-reveal-style]) .reveal-on-scroll:not(.is-revealed) {
     opacity: 0;
     transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 30deg) * -1)) scale(var(--reveal-scale, 0.8));
-    clip-path: circle(0% at 50% 50%);
-    filter: blur(var(--reveal-blur, 8px));
   }
 
   :root[data-reveal-style="3d-fade"] .reveal-on-scroll:not(.is-revealed) {
     opacity: 0;
     transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 30deg) * -1)) scale(var(--reveal-scale, 0.8));
-    filter: blur(var(--reveal-blur, 8px));
   }
 
   :root[data-reveal-style="fade-up"] .reveal-on-scroll:not(.is-revealed) {
     opacity: 0;
     transform: translateY(var(--reveal-distance, 24px));
-    filter: none;
   }
 
   :root[data-reveal-style="subtle-scale"] .reveal-on-scroll:not(.is-revealed) {
     opacity: 0;
     transform: scale(var(--reveal-scale, 0.94));
-    filter: none;
   }
 
   .reveal-on-scroll.is-revealed {
     opacity: 1;
     transform: none;
-    clip-path: circle(150% at 50% 50%);
-    filter: blur(0px);
   }
 }
 

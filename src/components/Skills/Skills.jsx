@@ -15,16 +15,8 @@ function Skills({ onStateChange }) {
   // Pinned selected skill + transient hovered skill for smooth inspection
   const [selectedSkill, setSelectedSkill] = useState(skillsData[0]);
   const [hoveredSkill, setHoveredSkill] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState('ALL');
 
   const activeSkill = hoveredSkill || selectedSkill;
-
-  const categories = ['ALL', 'FRONTEND', 'BACKEND', 'DATABASE', 'TOOLS', 'EXPLORING'];
-  const filteredSkills = useMemo(() => {
-    return selectedCategory === 'ALL'
-      ? skillsData
-      : skillsData.filter((s) => s.category.toUpperCase() === selectedCategory.toUpperCase());
-  }, [selectedCategory]);
 
   // Connection line active check
   const isLineActive = (skillA, skillB) => {
@@ -93,20 +85,6 @@ function Skills({ onStateChange }) {
         <p className="skills-intro-text">
           An interconnected map of technologies I actively build and experiment with. Hover or click any node or card below to inspect topics and observe live architectural dependencies.
         </p>
-
-        {/* Category Filters */}
-        <div className="skills-filter-bar">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              type="button"
-              className={`filter-chip ${selectedCategory === cat ? 'active' : ''}`}
-              onClick={() => setSelectedCategory(cat)}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* 1. Skill Network Container: Dedicated Independent Stacking Context */}
@@ -137,15 +115,12 @@ function Skills({ onStateChange }) {
             const isSelected = activeSkill?.id === skill.id;
             const isConnected = activeSkill?.connections?.includes(skill.id);
             const isDimmed = activeSkill && !isSelected && !isConnected;
-            const isCategoryFiltered =
-              selectedCategory !== 'ALL' &&
-              skill.category.toUpperCase() !== selectedCategory.toUpperCase();
 
             return (
               <button
                 key={skill.id}
                 type="button"
-                className={`skill-node ${isSelected ? 'node-selected' : ''} ${isConnected ? 'node-connected' : ''} ${isDimmed || isCategoryFiltered ? 'node-dimmed' : ''}`}
+                className={`skill-node ${isSelected ? 'node-selected' : ''} ${isConnected ? 'node-connected' : ''} ${isDimmed ? 'node-dimmed' : ''}`}
                 style={{
                   left: `${skill.x}%`,
                   top: `${skill.y}%`,
@@ -226,7 +201,7 @@ function Skills({ onStateChange }) {
       </div>
 
       <div className="skills-cards-grid reveal-on-scroll">
-        {filteredSkills.map((skill) => {
+        {skillsData.map((skill) => {
           const isSelected = selectedSkill?.id === skill.id;
 
           return (

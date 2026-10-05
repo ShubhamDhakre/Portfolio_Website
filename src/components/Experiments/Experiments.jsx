@@ -7,9 +7,7 @@ import './Experiments.css';
  * 01 Interactive Glass UI
  * 02 Three.js Digital Core
  * 03 Mouse Reactive Background
- * 04 Interactive Skill Constellation
- * 05 Theme System
- * 06 AI Interview Analysis Concept
+ * 04 Theme System
  */
 function Experiments({ onStateChange }) {
   const [activeExp, setActiveExp] = useState(0);
@@ -22,11 +20,6 @@ function Experiments({ onStateChange }) {
 
   // Exp 03: Mouse Spotlight Radius & Opacity
   const [spotlightRadius, setSpotlightRadius] = useState(650);
-
-  // Exp 06: AI Speech Simulator
-  const [speechWpm, setSpeechWpm] = useState(136);
-  const [fillerCount, setFillerCount] = useState(2);
-  const [audioLevel, setAudioLevel] = useState(68);
 
   const glassRectRef = useRef(null);
   const glassRafRef = useRef(null);
@@ -92,28 +85,12 @@ function Experiments({ onStateChange }) {
       status: "ACTIVE",
     },
     {
-      id: "exp-4",
-      number: "04",
-      title: "Interactive Skill Constellation",
-      concept: "Procedural SVG graph linking skills as interconnected vertices with hover proximity highlighting and bidirectional edge analysis.",
-      tags: ["SVG Network", "Graph Theory", "UI/UX"],
-      status: "ACTIVE",
-    },
-    {
       id: "exp-5",
-      number: "05",
+      number: "04",
       title: "Theme System",
       concept: "Centralized CSS custom property token architecture synchronized across WebGL canvases and DOM nodes with localStorage persistence.",
       tags: ["CSS Tokens", "localStorage", "Zero-Dependency"],
       status: "ACTIVE",
-    },
-    {
-      id: "exp-6",
-      number: "06",
-      title: "AI Interview Analysis Concept",
-      concept: "Simulating speech pacing metrics (WPM), voice volume variance, and lexical filler detection for the AI Interview Coach.",
-      tags: ["Audio Processing", "AI/ML Concept", "Pacing"],
-      status: "EXPERIMENTAL",
     }
   ];
 
@@ -268,31 +245,8 @@ function Experiments({ onStateChange }) {
                 </div>
               )}
 
-              {/* Sandbox 04: Interactive Skill Constellation */}
+              {/* Sandbox 04: Theme System Matrix */}
               {activeExp === 3 && (
-                <div className="sandbox-graph-container">
-                  <div className="graph-stats-grid">
-                    <div className="graph-stat-card">
-                      <span className="stat-num">14</span>
-                      <span className="stat-name">Active Skill Vertices</span>
-                    </div>
-                    <div className="graph-stat-card">
-                      <span className="stat-num">24</span>
-                      <span className="stat-name">Constellation Edges</span>
-                    </div>
-                    <div className="graph-stat-card">
-                      <span className="stat-num">0</span>
-                      <span className="stat-name">External Libraries</span>
-                    </div>
-                  </div>
-                  <p className="sandbox-note">
-                    Rendered purely via declarative SVG &amp; CSS with bidirectional hover highlighting and topological adjacency tracking.
-                  </p>
-                </div>
-              )}
-
-              {/* Sandbox 05: Theme System Matrix */}
-              {activeExp === 4 && (
                 <div className="sandbox-theme-container">
                   <div className="theme-matrix">
                     <div className="matrix-row">
@@ -321,73 +275,6 @@ function Experiments({ onStateChange }) {
                   </div>
                   <p className="sandbox-note">
                     Tokens dynamically cascade across WebGL renderers and CSS glass panels without page refresh.
-                  </p>
-                </div>
-              )}
-
-              {/* Sandbox 06: AI Interview Analysis Concept */}
-              {activeExp === 5 && (
-                <div className="sandbox-ai-container">
-                  <div className="ai-metrics-panel">
-                    <div className="metric-box">
-                      <span className="metric-label">Speaking Pacing (WPM)</span>
-                      <div className="metric-value-row">
-                        <span className="metric-value">{speechWpm}</span>
-                        <span className="metric-status">
-                          {speechWpm < 120 ? 'Too Slow' : speechWpm > 160 ? 'Fast' : 'Optimal Pacing'}
-                        </span>
-                      </div>
-                      <input
-                        type="range"
-                        min="80"
-                        max="200"
-                        value={speechWpm}
-                        onChange={(e) => setSpeechWpm(Number(e.target.value))}
-                        className="sandbox-slider"
-                      />
-                    </div>
-
-                    <div className="metric-box">
-                      <span className="metric-label">Filler Words Detected ("um", "like")</span>
-                      <div className="metric-value-row">
-                        <span className="metric-value">{fillerCount}</span>
-                        <button
-                          type="button"
-                          className="mini-counter-btn"
-                          onClick={() => setFillerCount(fillerCount + 1)}
-                        >
-                          + Simulate Filler
-                        </button>
-                        <button
-                          type="button"
-                          className="mini-counter-btn"
-                          onClick={() => setFillerCount(0)}
-                        >
-                          Reset
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="metric-box">
-                      <span className="metric-label">Simulated Audio Level</span>
-                      <div className="audio-meter-bar">
-                        <div
-                          className="audio-meter-fill"
-                          style={{ width: `${audioLevel}%` }}
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        className="sandbox-btn"
-                        style={{ marginTop: '10px' }}
-                        onClick={() => setAudioLevel(Math.floor(30 + Math.random() * 60))}
-                      >
-                        Sample Microphone Volume
-                      </button>
-                    </div>
-                  </div>
-                  <p className="sandbox-note">
-                    Concept prototype demonstrating audio processing indicators for the AI Interview Coach project.
                   </p>
                 </div>
               )}
