@@ -12,22 +12,44 @@ function Navbar({
   isScrolled,
   theme,
   toggleTheme,
-  onEasterEggTrigger,
-  systemStatus = 'READY'
 }) {
-  const [clickCount, setClickCount] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('hero');
+  const [hasResume, setHasResume] = useState(false);
 
-  // Easter egg counter on </> symbol
-  const handleCodeIconClick = (e) => {
-    e.preventDefault();
-    const newCount = clickCount + 1;
-    setClickCount(newCount);
+  // Probe for actual resume PDF in public/ without corrupting downloads
+  useEffect(() => {
+    fetch('/resume.pdf', { method: 'HEAD' })
+      .then((res) => {
+        const type = res.headers.get('content-type') || '';
+        if (res.ok && type.includes('pdf')) {
+          setHasResume(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
-    if (newCount === 5) {
-      if (onEasterEggTrigger) onEasterEggTrigger();
-      setClickCount(0);
+  const handleResumeClick = (e) => {
+    if (!hasResume) {
+      e.preventDefault();
+      fetch('/resume.pdf', { method: 'HEAD' })
+        .then((res) => {
+          const type = res.headers.get('content-type') || '';
+          if (res.ok && type.includes('pdf')) {
+            setHasResume(true);
+            const downloadLink = document.createElement('a');
+            downloadLink.href = '/resume.pdf';
+            downloadLink.download = 'Shubham_Dhakre_Resume.pdf';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+          } else {
+            console.warn('[Navbar] Resume PDF not found at /resume.pdf. Please add your resume PDF to public/resume.pdf.');
+          }
+        })
+        .catch(() => {
+          console.warn('[Navbar] Unable to check resume PDF status.');
+        });
     }
   };
 
@@ -83,15 +105,33 @@ function Navbar({
       <nav className="navbar-container" aria-label="Main Navigation">
         {/* Brand & Developer Workspace Label */}
         <div className="navbar-brand">
-          <button
-            type="button"
-            className="navbar-easter-trigger"
-            onClick={handleCodeIconClick}
-            title="Interactive system key"
-            aria-label="Developer system console key"
+          <a
+            href="/resume.pdf"
+            download="Shubham_Dhakre_Resume.pdf"
+            className="navbar-resume-btn"
+            aria-label="Download resume"
+            title="Download resume"
+            onClick={handleResumeClick}
           >
-            &lt;/&gt;
-          </button>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="navbar-resume-icon"
+              aria-hidden="true"
+            >
+              <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+              <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+              <path d="M12 18v-6" />
+              <path d="m9 15 3 3 3-3" />
+            </svg>
+          </a>
           <a
             href="#hero"
             onClick={(e) => handleNavClick(e, 'hero')}
@@ -158,13 +198,8 @@ function Navbar({
           </li>
         </ul>
 
-        {/* Right Action: AI System State Badge & Theme Toggle */}
+        {/* Right Actions: Theme Toggle & Mobile Menu */}
         <div className="navbar-actions">
-          <div className="navbar-system-status" title="Active Interface State">
-            <span className="sys-status-indicator" />
-            <span className="sys-status-text">SYS.{systemStatus}</span>
-          </div>
-
           <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
 
           <button

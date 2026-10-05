@@ -71,26 +71,56 @@
   gap: 10px;
 }
 
-.navbar-easter-trigger {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--accent-highlight);
+/* Resume / PDF Download Action Icon Button */
+.navbar-resume-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   background: rgba(109, 91, 166, 0.12);
   border: 1px solid rgba(109, 91, 166, 0.25);
-  border-radius: 6px;
-  padding: 3px 8px;
+  color: var(--accent-highlight);
   cursor: pointer;
-  transition: all var(--transition-fast);
+  text-decoration: none;
+  transition: color var(--transition-fast),
+              background var(--transition-fast),
+              border-color var(--transition-fast),
+              box-shadow var(--transition-fast),
+              transform var(--transition-fast);
   user-select: none;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box;
 }
 
-.navbar-easter-trigger:hover {
-  background: rgba(109, 91, 166, 0.26);
+.navbar-resume-btn:hover {
+  color: #FFFFFF;
+  background: rgba(109, 91, 166, 0.28);
   border-color: var(--accent-highlight);
   box-shadow: 0 0 12px var(--accent-glow);
   transform: scale(1.05);
+}
+
+.navbar-resume-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.navbar-resume-btn:active {
+  transform: scale(0.96);
+}
+
+.navbar-resume-icon {
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+  stroke-width: 2;
+  transition: transform var(--transition-fast);
+}
+
+.navbar-resume-btn:hover .navbar-resume-icon {
+  transform: translateY(0.5px);
 }
 
 .navbar-brand-name {
@@ -174,37 +204,7 @@
   gap: 12px;
 }
 
-/* System State Indicator */
-.navbar-system-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 11px;
-  border-radius: var(--radius-full);
-  background: rgba(0, 0, 0, 0.28);
-  border: 1px solid var(--glass-border);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--text-secondary);
-  user-select: none;
-  transition: all var(--transition-fast);
-  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.3);
-}
 
-.sys-status-indicator {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #10b981;
-  box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
-  animation: pulseGreen 2.5s infinite ease-in-out;
-}
-
-.sys-status-text {
-  color: var(--accent-highlight);
-  font-weight: 600;
-}
 
 /* Mobile Hamburger */
 .mobile-menu-btn {
@@ -294,10 +294,7 @@
   .navbar-workspace-badge {
     font-size: 10px;
   }
-  .navbar-system-status {
-    padding: 3px 8px;
-    font-size: 9.5px;
-  }
+
 }
 
 /* Mobile & Touch Viewports (<= 768px) */
@@ -316,9 +313,13 @@
   .mobile-menu-btn {
     display: flex;
   }
-  .navbar-system-status {
-    padding: 3px 8px;
-    font-size: 9px;
+  .navbar-resume-btn {
+    width: 26px;
+    height: 26px;
+  }
+  .navbar-resume-icon {
+    width: 13px;
+    height: 13px;
   }
   .navbar-actions {
     gap: 8px;
@@ -350,14 +351,13 @@
   .navbar-workspace-badge {
     display: none;
   }
-  .navbar-easter-trigger {
-    padding: 2px 5px;
-    font-size: 10px;
+  .navbar-resume-btn {
+    width: 25px;
+    height: 25px;
   }
-  .navbar-system-status {
-    padding: 2px 6px;
-    font-size: 8.5px;
-    letter-spacing: 0.04em;
+  .navbar-resume-icon {
+    width: 12.5px;
+    height: 12.5px;
   }
   .navbar-actions {
     gap: 6px;
@@ -376,8 +376,13 @@
   .navbar-brand-name {
     font-size: 12px;
   }
-  .navbar-system-status .sys-status-text {
-    font-size: 8px;
+  .navbar-resume-btn {
+    width: 23px;
+    height: 23px;
+  }
+  .navbar-resume-icon {
+    width: 11.5px;
+    height: 11.5px;
   }
   .navbar-actions {
     gap: 4px;
