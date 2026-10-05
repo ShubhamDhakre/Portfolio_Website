@@ -19,10 +19,16 @@ export const DEFAULT_DEV_PERFORMANCE = {
 
 export const DEFAULT_SCROLL_REVEAL = {
   enabled: true,
-  style: 'fade-up', // 'fade-up' | 'fade-in' | 'slide-up' | 'subtle-scale'
-  duration: 650, // ms (300 to 1500)
-  staggerDelay: 100, // ms (0 to 300)
-  distance: 24, // px (8 to 60)
+  style: '3d-circle', // '3d-circle' | '3d-fade' | 'fade-up' | 'subtle-scale'
+  rotation: 30, // deg (0 to 45)
+  scale: 0.8, // (0.5 to 0.98)
+  perspective: 1400, // px (600 to 2500)
+  blur: 8, // px (0 to 20)
+  rangeEntry: 10, // % (0 to 30)
+  rangeCover: 50, // % (25 to 80)
+  duration: 700, // ms (200 to 2000) fallback for non-scroll-timeline
+  staggerDelay: 80, // ms (0 to 250)
+  distance: 24, // px (0 to 80)
   threshold: 0.1, // (0.0 to 0.5)
   replay: false, // boolean
 };

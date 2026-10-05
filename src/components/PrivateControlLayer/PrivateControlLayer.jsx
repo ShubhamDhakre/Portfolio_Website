@@ -694,9 +694,15 @@ export default function PrivateControlLayer({
           },
           scrollReveal: {
             enabled: prefs.scrollReveal?.enabled !== false,
-            style: prefs.scrollReveal?.style || 'fade-up',
-            duration: Number(prefs.scrollReveal?.duration) || 650,
-            staggerDelay: Number(prefs.scrollReveal?.staggerDelay) || 100,
+            style: prefs.scrollReveal?.style || '3d-circle',
+            rotation: typeof prefs.scrollReveal?.rotation === 'number' ? prefs.scrollReveal.rotation : (Number(prefs.scrollReveal?.rotation) || 30),
+            scale: typeof prefs.scrollReveal?.scale === 'number' ? prefs.scrollReveal.scale : (Number(prefs.scrollReveal?.scale) || 0.8),
+            perspective: typeof prefs.scrollReveal?.perspective === 'number' ? prefs.scrollReveal.perspective : (Number(prefs.scrollReveal?.perspective) || 1400),
+            blur: typeof prefs.scrollReveal?.blur === 'number' ? prefs.scrollReveal.blur : (!isNaN(Number(prefs.scrollReveal?.blur)) ? Number(prefs.scrollReveal?.blur) : 8),
+            rangeEntry: typeof prefs.scrollReveal?.rangeEntry === 'number' ? prefs.scrollReveal.rangeEntry : (Number(prefs.scrollReveal?.rangeEntry) || 10),
+            rangeCover: typeof prefs.scrollReveal?.rangeCover === 'number' ? prefs.scrollReveal.rangeCover : (Number(prefs.scrollReveal?.rangeCover) || 50),
+            duration: Number(prefs.scrollReveal?.duration) || 700,
+            staggerDelay: Number(prefs.scrollReveal?.staggerDelay) || 80,
             distance: Number(prefs.scrollReveal?.distance) || 24,
             threshold: Number(prefs.scrollReveal?.threshold) || 0.1,
             replay: Boolean(prefs.scrollReveal?.replay),
@@ -1586,10 +1592,16 @@ export default function PrivateControlLayer({
   const renderScrollRevealControl = () => {
     const sr = prefs.scrollReveal || DEFAULT_SCROLL_REVEAL;
     const isEnabled = sr.enabled !== false;
-    const style = sr.style || 'fade-up';
-    const duration = Number(sr.duration) || 650;
-    const staggerDelay = Number(sr.staggerDelay) || 100;
+    const style = sr.style || '3d-circle';
+    const duration = Number(sr.duration) || 700;
+    const staggerDelay = Number(sr.staggerDelay) || 80;
     const distance = Number(sr.distance) || 24;
+    const rotation = typeof sr.rotation === 'number' ? sr.rotation : (Number(sr.rotation) || 30);
+    const scale = typeof sr.scale === 'number' ? sr.scale : (Number(sr.scale) || 0.8);
+    const perspective = typeof sr.perspective === 'number' ? sr.perspective : (Number(sr.perspective) || 1400);
+    const blur = typeof sr.blur === 'number' ? sr.blur : (!isNaN(Number(sr.blur)) ? Number(sr.blur) : 8);
+    const rangeEntry = typeof sr.rangeEntry === 'number' ? sr.rangeEntry : (Number(sr.rangeEntry) || 10);
+    const rangeCover = typeof sr.rangeCover === 'number' ? sr.rangeCover : (Number(sr.rangeCover) || 50);
     const threshold = Number(sr.threshold) || 0.1;
     const replay = Boolean(sr.replay);
 
@@ -1598,7 +1610,7 @@ export default function PrivateControlLayer({
         <div className="card-heading">
           <div className="card-heading-left">
             <span className="card-title">SCROLL REVEAL ANIMATIONS</span>
-            <span className="card-subtext">Fluid viewport-triggered entry animations across portfolio sections</span>
+            <span className="card-subtext">Scroll-driven 3D entrance and viewport transitions</span>
           </div>
           <button
             type="button"
@@ -1613,8 +1625,8 @@ export default function PrivateControlLayer({
         {/* Master Switch */}
         <div className="control-item master-toggle-row">
           <div className="control-title-desc">
-            <span className="control-label">Enable Scroll Reveal</span>
-            <span className="control-desc">Smoothly animate components into viewport as the user scrolls</span>
+            <span className="control-label">Enable Scroll-Driven 3D Reveal</span>
+            <span className="control-desc">Smoothly animate components into viewport with 3D perspective and clip-path</span>
           </div>
           <button
             type="button"
@@ -1630,11 +1642,11 @@ export default function PrivateControlLayer({
           <div className="preview-header">
             <div className="preview-header-left">
               <span className="preview-title">LIVE ANIMATION PREVIEW</span>
-              <span className="preview-sub">Simulating staggered viewport reveal sequence</span>
+              <span className="preview-sub">Simulating 3D scroll-reveal sequence</span>
             </div>
             <button
               type="button"
-              className="btn-trigger-preview"
+              className="btn-trigger-preview btn-retrigger-preview"
               onClick={() => setRevealPreviewKey((prev) => prev + 1)}
               title="Re-play the reveal sequence with current settings"
             >
@@ -1649,6 +1661,10 @@ export default function PrivateControlLayer({
                 '--demo-distance': `${distance}px`,
                 '--demo-delay': '0ms',
                 '--demo-style': style,
+                '--demo-rotation': `${rotation}deg`,
+                '--demo-scale': scale,
+                '--demo-perspective': `${perspective}px`,
+                '--demo-blur': `${blur}px`,
               }}
             >
               <div className="demo-badge">01 // HEADER</div>
@@ -1662,6 +1678,10 @@ export default function PrivateControlLayer({
                 '--demo-distance': `${distance}px`,
                 '--demo-delay': `${staggerDelay * 1}ms`,
                 '--demo-style': style,
+                '--demo-rotation': `${rotation}deg`,
+                '--demo-scale': scale,
+                '--demo-perspective': `${perspective}px`,
+                '--demo-blur': `${blur}px`,
               }}
             >
               <div className="demo-badge">02 // CARD ITEM</div>
@@ -1675,6 +1695,10 @@ export default function PrivateControlLayer({
                 '--demo-distance': `${distance}px`,
                 '--demo-delay': `${staggerDelay * 2}ms`,
                 '--demo-style': style,
+                '--demo-rotation': `${rotation}deg`,
+                '--demo-scale': scale,
+                '--demo-perspective': `${perspective}px`,
+                '--demo-blur': `${blur}px`,
               }}
             >
               <div className="demo-badge">03 // SPEC ITEM</div>
@@ -1689,9 +1713,9 @@ export default function PrivateControlLayer({
           <label className="field-label">ANIMATION STYLE</label>
           <div className="style-segmented-picker">
             {[
+              { id: '3d-circle', label: '3D Circle', desc: '3D perspective, rotation & circular reveal' },
+              { id: '3d-fade', label: '3D Fade', desc: '3D perspective tilt & smooth blur dissolve' },
               { id: 'fade-up', label: 'Fade Up', desc: 'Fade in with upward motion' },
-              { id: 'fade-in', label: 'Fade In', desc: 'Pure opacity dissolve' },
-              { id: 'slide-up', label: 'Slide Up', desc: 'Smooth upward slide' },
               { id: 'subtle-scale', label: 'Subtle Scale', desc: 'Gentle zoom and fade' },
             ].map((opt) => (
               <button
@@ -1709,17 +1733,143 @@ export default function PrivateControlLayer({
 
         {/* Sliders Grid */}
         <div className="sliders-control-grid">
-          {/* Duration */}
+          {/* 3D Rotation Intensity */}
           <div className="field-group">
             <div className="slider-label-row">
-              <label className="field-label" htmlFor="sr-duration">ANIMATION DURATION</label>
+              <label className="field-label" htmlFor="sr-rotation">3D ROTATION INTENSITY</label>
+              <span className="slider-value-display">{rotation}°</span>
+            </div>
+            <input
+              id="sr-rotation"
+              type="range"
+              min="0"
+              max="45"
+              step="1"
+              className="field-input range-slider"
+              value={rotation}
+              onChange={(e) => updateScrollReveal('rotation', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Starting Scale */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="sr-scale">STARTING SCALE</label>
+              <span className="slider-value-display">{Math.round(scale * 100)}%</span>
+            </div>
+            <input
+              id="sr-scale"
+              type="range"
+              min="0.50"
+              max="0.98"
+              step="0.02"
+              className="field-input range-slider"
+              value={scale}
+              onChange={(e) => updateScrollReveal('scale', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Perspective */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="sr-perspective">3D PERSPECTIVE DEPTH</label>
+              <span className="slider-value-display">{perspective} px</span>
+            </div>
+            <input
+              id="sr-perspective"
+              type="range"
+              min="600"
+              max="2400"
+              step="50"
+              className="field-input range-slider"
+              value={perspective}
+              onChange={(e) => updateScrollReveal('perspective', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Blur Intensity */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="sr-blur">BLUR INTENSITY</label>
+              <span className="slider-value-display">{blur} px</span>
+            </div>
+            <input
+              id="sr-blur"
+              type="range"
+              min="0"
+              max="20"
+              step="1"
+              className="field-input range-slider"
+              value={blur}
+              onChange={(e) => updateScrollReveal('blur', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Range Entry */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="sr-range-entry">TIMELINE ENTRY RANGE</label>
+              <span className="slider-value-display">entry {rangeEntry}%</span>
+            </div>
+            <input
+              id="sr-range-entry"
+              type="range"
+              min="0"
+              max="30"
+              step="1"
+              className="field-input range-slider"
+              value={rangeEntry}
+              onChange={(e) => updateScrollReveal('rangeEntry', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Range Cover */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="sr-range-cover">TIMELINE COVER RANGE</label>
+              <span className="slider-value-display">cover {rangeCover}%</span>
+            </div>
+            <input
+              id="sr-range-cover"
+              type="range"
+              min="25"
+              max="80"
+              step="5"
+              className="field-input range-slider"
+              value={rangeCover}
+              onChange={(e) => updateScrollReveal('rangeCover', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Viewport Trigger Threshold */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="sr-threshold">VIEWPORT TRIGGER THRESHOLD</label>
+              <span className="slider-value-display">{Math.round(threshold * 100)}% in view</span>
+            </div>
+            <input
+              id="sr-threshold"
+              type="range"
+              min="0.05"
+              max="0.50"
+              step="0.05"
+              className="field-input range-slider"
+              value={threshold}
+              onChange={(e) => updateScrollReveal('threshold', Number(e.target.value))}
+            />
+          </div>
+
+          {/* Fallback Animation Duration */}
+          <div className="field-group">
+            <div className="slider-label-row">
+              <label className="field-label" htmlFor="sr-duration">FALLBACK DURATION</label>
               <span className="slider-value-display">{duration} ms</span>
             </div>
             <input
               id="sr-duration"
               type="range"
-              min="300"
-              max="1500"
+              min="200"
+              max="2000"
               step="50"
               className="field-input range-slider"
               value={duration}
@@ -1737,7 +1887,7 @@ export default function PrivateControlLayer({
               id="sr-stagger"
               type="range"
               min="0"
-              max="300"
+              max="250"
               step="10"
               className="field-input range-slider"
               value={staggerDelay}
@@ -1754,30 +1904,12 @@ export default function PrivateControlLayer({
             <input
               id="sr-distance"
               type="range"
-              min="8"
-              max="60"
+              min="0"
+              max="80"
               step="2"
               className="field-input range-slider"
               value={distance}
               onChange={(e) => updateScrollReveal('distance', Number(e.target.value))}
-            />
-          </div>
-
-          {/* Threshold */}
-          <div className="field-group">
-            <div className="slider-label-row">
-              <label className="field-label" htmlFor="sr-threshold">VIEWPORT TRIGGER THRESHOLD</label>
-              <span className="slider-value-display">{Math.round(threshold * 100)}% in view</span>
-            </div>
-            <input
-              id="sr-threshold"
-              type="range"
-              min="0.05"
-              max="0.50"
-              step="0.05"
-              className="field-input range-slider"
-              value={threshold}
-              onChange={(e) => updateScrollReveal('threshold', Number(e.target.value))}
             />
           </div>
         </div>

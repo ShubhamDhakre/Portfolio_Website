@@ -140,7 +140,7 @@ function About({ onStateChange }) {
 
       <div className="about-grid">
         {/* Main Narrative Card */}
-        <div className="about-card about-card-main">
+        <div className="about-card about-card-main reveal-on-scroll">
           <div className="about-profile-layout">
             <div className="about-photo-wrapper">
               <div
@@ -251,7 +251,7 @@ function About({ onStateChange }) {
         {/* Side Highlights Column */}
         <div className="about-sidebar">
           {/* Education Card */}
-          <div className="about-card about-card-sub">
+          <div className="about-card about-card-sub reveal-on-scroll">
             <div className="card-header-icon">🎓</div>
             <div className="card-sub-meta">DEGREE // UNDERGRADUATE</div>
             <h4 className="card-sub-title">Computer Science &amp; Engineering</h4>
@@ -261,7 +261,7 @@ function About({ onStateChange }) {
           </div>
 
           {/* Practical Focus Card */}
-          <div className="about-card about-card-sub">
+          <div className="about-card about-card-sub reveal-on-scroll">
             <div className="card-header-icon">⚡</div>
             <div className="card-sub-meta">PHILOSOPHY // ZERO BLOAT</div>
             <h4 className="card-sub-title">Hands-On Engineering</h4>
@@ -271,7 +271,7 @@ function About({ onStateChange }) {
           </div>
 
           {/* Active Exploration Card */}
-          <div className="about-card about-card-sub highlight-card">
+          <div className="about-card about-card-sub highlight-card reveal-on-scroll">
             <div className="card-header-icon">🔬</div>
             <div className="card-sub-meta">CURRENT EXPERIMENT</div>
             <h4 className="card-sub-title">Multimodal Speech &amp; Vision</h4>
@@ -283,7 +283,7 @@ function About({ onStateChange }) {
       </div>
 
       {/* Interactive Web & AI Architecture Pipeline */}
-      <div className="about-architecture-section">
+      <div className="about-architecture-section reveal-on-scroll">
         <div className="arch-header">
           <div className="arch-header-left">
             <span className="arch-pre-label">SYSTEM ARCHITECTURE VISUALIZATION</span>

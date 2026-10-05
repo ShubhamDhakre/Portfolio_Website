@@ -34,9 +34,15 @@ export const DEFAULT_DEV_PERFORMANCE = {
 
 export const DEFAULT_SCROLL_REVEAL = {
   enabled: true,
-  style: 'fade-up', // 'fade-up' | 'fade-in' | 'slide-up' | 'subtle-scale'
-  duration: 650, // ms
-  staggerDelay: 100, // ms
+  style: '3d-circle', // '3d-circle' | '3d-fade' | 'fade-up' | 'subtle-scale'
+  rotation: 30, // deg (0 to 45)
+  scale: 0.8, // (0.5 to 0.98)
+  perspective: 1400, // px (600 to 2500)
+  blur: 8, // px (0 to 20)
+  rangeEntry: 10, // % (0 to 30)
+  rangeCover: 50, // % (25 to 80)
+  duration: 700, // ms
+  staggerDelay: 80, // ms
   distance: 24, // px
   threshold: 0.1, // float
   replay: false, // boolean
@@ -217,14 +223,20 @@ export function validateSettingsPayload(payload) {
     if (s.scrollReveal !== undefined) {
       if (typeof s.scrollReveal === 'object' && s.scrollReveal !== null) {
         const sr = s.scrollReveal;
-        const allowedStyles = ['fade-up', 'fade-in', 'slide-up', 'subtle-scale'];
+        const allowedStyles = ['3d-circle', '3d-fade', 'fade-up', 'subtle-scale'];
         const chosenStyle = allowedStyles.includes(String(sr.style).toLowerCase())
           ? String(sr.style).toLowerCase()
-          : 'fade-up';
+          : '3d-circle';
         sanitized.global.scrollReveal = {
           enabled: sr.enabled !== undefined ? Boolean(sr.enabled) : true,
           style: chosenStyle,
-          duration: Math.min(Math.max(Number(sr.duration) || 650, 100), 3000),
+          rotation: Math.min(Math.max(typeof sr.rotation === 'number' ? sr.rotation : (Number(sr.rotation) || 30), 0), 45),
+          scale: Math.min(Math.max(typeof sr.scale === 'number' ? sr.scale : (Number(sr.scale) || 0.8), 0.5), 0.98),
+          perspective: Math.min(Math.max(typeof sr.perspective === 'number' ? sr.perspective : (Number(sr.perspective) || 1400), 600), 2500),
+          blur: Math.min(Math.max(typeof sr.blur === 'number' ? sr.blur : (!isNaN(Number(sr.blur)) ? Number(sr.blur) : 8), 0), 20),
+          rangeEntry: Math.min(Math.max(typeof sr.rangeEntry === 'number' ? sr.rangeEntry : (Number(sr.rangeEntry) || 10), 0), 30),
+          rangeCover: Math.min(Math.max(typeof sr.rangeCover === 'number' ? sr.rangeCover : (Number(sr.rangeCover) || 50), 25), 80),
+          duration: Math.min(Math.max(Number(sr.duration) || 700, 100), 3000),
           staggerDelay: Math.min(Math.max(Number(sr.staggerDelay) || 0, 0), 1000),
           distance: Math.min(Math.max(Number(sr.distance) || 24, 0), 200),
           threshold: Math.min(Math.max(Number(sr.threshold) || 0.1, 0.0), 1.0),

@@ -3449,19 +3449,19 @@
   animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.preview-demo-card.active-reveal[style*="--demo-style: 3d-circle"],
+.preview-demo-card.active-reveal[style*="--demo-style:3d-circle"] {
+  animation-name: preview-3d-circle;
+}
+
+.preview-demo-card.active-reveal[style*="--demo-style: 3d-fade"],
+.preview-demo-card.active-reveal[style*="--demo-style:3d-fade"] {
+  animation-name: preview-3d-fade;
+}
+
 .preview-demo-card.active-reveal[style*="--demo-style: fade-up"],
 .preview-demo-card.active-reveal[style*="--demo-style:fade-up"] {
   animation-name: preview-fade-up;
-}
-
-.preview-demo-card.active-reveal[style*="--demo-style: fade-in"],
-.preview-demo-card.active-reveal[style*="--demo-style:fade-in"] {
-  animation-name: preview-fade-in;
-}
-
-.preview-demo-card.active-reveal[style*="--demo-style: slide-up"],
-.preview-demo-card.active-reveal[style*="--demo-style:slide-up"] {
-  animation-name: preview-slide-up;
 }
 
 .preview-demo-card.active-reveal[style*="--demo-style: subtle-scale"],
@@ -3469,23 +3469,41 @@
   animation-name: preview-subtle-scale;
 }
 
+@keyframes preview-3d-circle {
+  from {
+    opacity: 0;
+    transform: perspective(var(--demo-perspective, 1400px)) rotateY(calc(var(--demo-rotation, 30deg) * -1)) scale(var(--demo-scale, 0.8));
+    clip-path: circle(0% at 50% 50%);
+    filter: blur(var(--demo-blur, 8px));
+  }
+  to {
+    opacity: 1;
+    transform: perspective(var(--demo-perspective, 1400px)) rotateY(0deg) scale(1);
+    clip-path: circle(100% at 50% 50%);
+    filter: blur(0);
+  }
+}
+
+@keyframes preview-3d-fade {
+  from {
+    opacity: 0;
+    transform: perspective(var(--demo-perspective, 1400px)) rotateY(calc(var(--demo-rotation, 30deg) * -1)) scale(var(--demo-scale, 0.8));
+    filter: blur(var(--demo-blur, 8px));
+  }
+  to {
+    opacity: 1;
+    transform: perspective(var(--demo-perspective, 1400px)) rotateY(0deg) scale(1);
+    filter: blur(0);
+  }
+}
+
 @keyframes preview-fade-up {
   from { opacity: 0; transform: translateY(var(--demo-distance, 24px)); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes preview-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes preview-slide-up {
-  from { opacity: 0.3; transform: translateY(var(--demo-distance, 24px)); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 @keyframes preview-subtle-scale {
-  from { opacity: 0; transform: scale(0.94); }
+  from { opacity: 0; transform: scale(var(--demo-scale, 0.94)); }
   to { opacity: 1; transform: scale(1); }
 }
 

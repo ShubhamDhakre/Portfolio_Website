@@ -29,6 +29,12 @@
   gap: 32px;
 }
 
+/* Project Card Wrapper (Isolates 3D Scroll Reveal from Inner Window Panel Hover) */
+.project-card-wrapper {
+  width: 100%;
+  position: relative;
+}
+
 /* Liquid Glass Browser Window Application Panel (Level 1 Glass) */
 .project-window-panel {
   position: relative;

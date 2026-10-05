@@ -105,7 +105,7 @@ function Experiments({ onStateChange }) {
         <span className="section-component-pill">&lt;LabSandbox /&gt;</span>
       </div>
 
-      <div className="experiments-intro">
+      <div className="experiments-intro reveal-on-scroll">
         <p className="experiments-intro-text">
           A dedicated space for technical experiments, prototypes, and proof-of-concepts exploring WebGL, math, audio pacing metrics, and glass physics. Select an experiment to interact with its live sandbox.
         </p>
@@ -119,7 +119,7 @@ function Experiments({ onStateChange }) {
             return (
               <div
                 key={exp.id}
-                className={`exp-card ${isSelected ? 'is-selected' : ''}`}
+                className={`exp-card reveal-on-scroll ${isSelected ? 'is-selected' : ''}`}
                 onClick={() => handleSelectExp(index)}
                 tabIndex={0}
                 role="button"
@@ -145,7 +145,7 @@ function Experiments({ onStateChange }) {
 
         {/* Right Column: Live Interactive Sandbox Stage */}
         <div className="experiments-stage">
-          <div className="stage-glass-panel">
+          <div className="stage-glass-panel reveal-on-scroll">
             <div className="stage-header">
               <span className="stage-terminal-tag">
                 LIVE SANDBOX {'//'} EXPERIMENT_{experimentsList[activeExp].number} {'//'} STATUS: {experimentsList[activeExp].status}

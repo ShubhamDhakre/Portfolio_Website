@@ -53,5 +53,41 @@ export function useScrollProgress() {
   return scrollState;
 }
 
+/**
+ * useIsScrolled
+ * Extremely lightweight scroll detector for headers/navbars.
+ * Updates state ONLY when crossing the specified scroll threshold (e.g., 30px),
+ * preventing unnecessary React re-renders during continuous page scrolling.
+ */
+export function useIsScrolled(threshold = 30) {
+  const [isScrolled, setIsScrolled] = useState(() => (typeof window !== 'undefined' ? window.scrollY > threshold : false));
+
+  useEffect(() => {
+    let rafId = null;
+
+    const checkScroll = () => {
+      const scrolled = window.scrollY > threshold;
+      setIsScrolled((prev) => (prev !== scrolled ? scrolled : prev));
+      rafId = null;
+    };
+
+    const handleScroll = () => {
+      if (!rafId) {
+        rafId = requestAnimationFrame(checkScroll);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    checkScroll();
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [threshold]);
+
+  return isScrolled;
+}
+
 export default useScrollProgress;
 

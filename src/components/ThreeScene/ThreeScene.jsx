@@ -80,6 +80,8 @@ function ThreeScene({
   const particleQuality = perfSettings.particleQuality || 'AUTO';
   const renderScale = perfSettings.renderScale || 'AUTO';
   const scrollEffectsEnabled = perfSettings.scrollEffectsEnabled !== false;
+  const scrollEffectsEnabledRef = useRef(scrollEffectsEnabled);
+  const scrollProgressRef = useRef(scrollProgress);
 
   // Mobile long-press state
   const [touchHolding, setTouchHolding] = useState(false);
@@ -464,6 +466,11 @@ function ThreeScene({
 
       coreGroup.rotation.x = autoRotX + currentTiltX;
       coreGroup.rotation.y = autoRotY + currentTiltY;
+      if (scrollEffectsEnabledRef.current && !prefersReducedMotion) {
+        const scrollY = typeof window !== 'undefined' ? (window.scrollY || 0) : 0;
+        const progress = scrollProgressRef.current !== undefined ? scrollProgressRef.current : Math.min(1, scrollY / Math.max(1, window.innerHeight || 800));
+        coreGroup.rotation.z = progress * Math.PI * 0.42;
+      }
 
       // 3. SCALE & GLOW
       const targetScale = isHovered ? (excitation > 1.1 ? 1.08 : 1.04) : 1.0;
@@ -620,6 +627,8 @@ function ThreeScene({
 
   // Subtle Scroll Reaction
   useEffect(() => {
+    scrollEffectsEnabledRef.current = scrollEffectsEnabled;
+    scrollProgressRef.current = scrollProgress;
     if (coreGroupRef.current && scrollEffectsEnabled) {
       const scrollRotation = (scrollProgress || 0) * Math.PI * 1.2;
       coreGroupRef.current.rotation.z = scrollRotation * 0.35;

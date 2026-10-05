@@ -12,7 +12,7 @@
   min-height: 100dvh;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Mouse-following radial ambient spotlight layer (Desktop Fine Pointer only) */
@@ -43,7 +43,7 @@
   z-index: 1;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Ensure floating navbar never covers section headers when navigating */
@@ -54,54 +54,183 @@ section {
   box-sizing: border-box;
 }
 
-/* Scroll Reveal Dynamic Design System */
+/* Scroll Reveal Dynamic Design System with 3D Scroll-Driven Timelines */
 :root {
-  --reveal-duration: 650ms;
+  --reveal-duration: 700ms;
   --reveal-distance: 24px;
-  --reveal-stagger-delay: 100ms;
+  --reveal-stagger-delay: 80ms;
+  --reveal-rotation: 30deg;
+  --reveal-scale: 0.8;
+  --reveal-perspective: 1400px;
+  --reveal-blur: 8px;
+  --reveal-range-entry: 10%;
+  --reveal-range-cover: 50%;
   --reveal-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.scroll-reveal {
-  opacity: 0;
-  transition-property: opacity, transform;
-  transition-duration: var(--reveal-duration, 650ms);
-  transition-timing-function: var(--reveal-timing-function, cubic-bezier(0.16, 1, 0.3, 1));
-  will-change: opacity, transform;
+/* Base keyframes for 3D and traditional reveal modes */
+@keyframes revealOnScroll {
+  from {
+    opacity: 0;
+    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 35deg) * -1)) scale(var(--reveal-scale, 0.75));
+    clip-path: circle(0% at 50% 50%);
+    filter: blur(var(--reveal-blur, 10px));
+  }
+  to {
+    opacity: 1;
+    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(0deg) scale(1);
+    clip-path: circle(150% at 50% 50%);
+    filter: blur(0px);
+  }
 }
 
-/* Style: fade-up (default) */
-:root[data-reveal-style="fade-up"] .scroll-reveal,
-.scroll-reveal:not([data-style]),
-.scroll-reveal[data-style="fade-up"] {
-  transform: translateY(var(--reveal-distance, 24px));
+@keyframes revealOnScroll3DCircle {
+  from {
+    opacity: 0;
+    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 35deg) * -1)) scale(var(--reveal-scale, 0.75));
+    clip-path: circle(0% at 50% 50%);
+    filter: blur(var(--reveal-blur, 10px));
+  }
+  to {
+    opacity: 1;
+    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(0deg) scale(1);
+    clip-path: circle(150% at 50% 50%);
+    filter: blur(0px);
+  }
 }
 
-/* Style: fade-in */
-:root[data-reveal-style="fade-in"] .scroll-reveal,
-.scroll-reveal[data-style="fade-in"] {
-  transform: none;
+@keyframes revealOnScroll3DFade {
+  from {
+    opacity: 0;
+    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 30deg) * -1)) scale(var(--reveal-scale, 0.8));
+    filter: blur(var(--reveal-blur, 8px));
+  }
+  to {
+    opacity: 1;
+    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(0deg) scale(1);
+    filter: blur(0px);
+  }
 }
 
-/* Style: slide-up */
-:root[data-reveal-style="slide-up"] .scroll-reveal,
-.scroll-reveal[data-style="slide-up"] {
-  transform: translateY(calc(var(--reveal-distance, 24px) * 1.6));
+@keyframes revealOnScrollFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(var(--reveal-distance, 24px));
+    filter: none;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: none;
+  }
 }
 
-/* Style: subtle-scale */
-:root[data-reveal-style="subtle-scale"] .scroll-reveal,
-.scroll-reveal[data-style="subtle-scale"] {
-  transform: scale(0.96) translateY(calc(var(--reveal-distance, 24px) * 0.5));
+@keyframes revealOnScrollSubtleScale {
+  from {
+    opacity: 0;
+    transform: scale(var(--reveal-scale, 0.94));
+    filter: none;
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: none;
+  }
 }
 
-/* Revealed State */
-.scroll-reveal.is-revealed {
-  opacity: 1;
-  transform: none;
+/* ==========================================================================
+   NATIVE CSS SCROLL-DRIVEN TIMELINE IMPLEMENTATION
+   - Strictly scoped to .reveal-on-scroll content components
+   - Never traps whole sections in persistent blur or perspective distortion
+   ========================================================================== */
+@supports (animation-timeline: view()) {
+  .reveal-on-scroll {
+    animation-timeline: view();
+    animation-range: entry var(--reveal-range-entry, 5%) cover calc(var(--reveal-range-cover, 40%) * 0.7);
+    animation-fill-mode: both;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, opacity, filter, clip-path;
+  }
+
+  /* Style: 3D Circle Reveal (default) */
+  :root[data-reveal-style="3d-circle"] .reveal-on-scroll,
+  :root:not([data-reveal-style]) .reveal-on-scroll {
+    animation-name: revealOnScroll;
+  }
+
+  /* Style: 3D Fade Reveal */
+  :root[data-reveal-style="3d-fade"] .reveal-on-scroll {
+    animation-name: revealOnScroll3DFade;
+  }
+
+  /* Style: Fade Up */
+  :root[data-reveal-style="fade-up"] .reveal-on-scroll {
+    animation-name: revealOnScrollFadeUp;
+  }
+
+  /* Style: Subtle Scale */
+  :root[data-reveal-style="subtle-scale"] .reveal-on-scroll {
+    animation-name: revealOnScrollSubtleScale;
+  }
+
+  /* When replay is explicitly false, freeze legacy scroll-reveal once fully revealed */
+  :root[data-reveal-replay="false"] .scroll-reveal.has-revealed:not(.reveal-on-scroll) {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    clip-path: none !important;
+  }
 }
 
-/* Staggered Child Element Transitions */
+/* ==========================================================================
+   FALLBACK FOR BROWSERS WITHOUT ANIMATION-TIMELINE: VIEW()
+   ========================================================================== */
+@supports not (animation-timeline: view()) {
+  .reveal-on-scroll {
+    opacity: 0;
+    transition-property: opacity, transform, filter, clip-path;
+    transition-duration: var(--reveal-duration, 700ms);
+    transition-timing-function: var(--reveal-timing-function, cubic-bezier(0.16, 1, 0.3, 1));
+    will-change: opacity, transform, filter;
+  }
+
+  /* Initial unrevealed styles */
+  :root[data-reveal-style="3d-circle"] .reveal-on-scroll:not(.is-revealed),
+  :root:not([data-reveal-style]) .reveal-on-scroll:not(.is-revealed) {
+    opacity: 0;
+    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 30deg) * -1)) scale(var(--reveal-scale, 0.8));
+    clip-path: circle(0% at 50% 50%);
+    filter: blur(var(--reveal-blur, 8px));
+  }
+
+  :root[data-reveal-style="3d-fade"] .reveal-on-scroll:not(.is-revealed) {
+    opacity: 0;
+    transform: perspective(var(--reveal-perspective, 1400px)) rotateY(calc(var(--reveal-rotation, 30deg) * -1)) scale(var(--reveal-scale, 0.8));
+    filter: blur(var(--reveal-blur, 8px));
+  }
+
+  :root[data-reveal-style="fade-up"] .reveal-on-scroll:not(.is-revealed) {
+    opacity: 0;
+    transform: translateY(var(--reveal-distance, 24px));
+    filter: none;
+  }
+
+  :root[data-reveal-style="subtle-scale"] .reveal-on-scroll:not(.is-revealed) {
+    opacity: 0;
+    transform: scale(var(--reveal-scale, 0.94));
+    filter: none;
+  }
+
+  .reveal-on-scroll.is-revealed {
+    opacity: 1;
+    transform: none;
+    clip-path: circle(150% at 50% 50%);
+    filter: blur(0px);
+  }
+}
+
+/* Staggered Child Element Transitions (Fallback Container Only) */
 .scroll-reveal .project-window-panel,
 .scroll-reveal .skill-category-card,
 .scroll-reveal .lab-tab-btn,
@@ -110,35 +239,35 @@ section {
 .scroll-reveal .reveal-stagger-child {
   opacity: 0;
   transform: translateY(calc(var(--reveal-distance, 24px) * 0.6));
-  transition: opacity var(--reveal-duration, 650ms) var(--reveal-timing-function, cubic-bezier(0.16, 1, 0.3, 1)),
-              transform var(--reveal-duration, 650ms) var(--reveal-timing-function, cubic-bezier(0.16, 1, 0.3, 1));
+  transition: opacity var(--reveal-duration, 700ms) var(--reveal-timing-function, cubic-bezier(0.16, 1, 0.3, 1)),
+              transform var(--reveal-duration, 700ms) var(--reveal-timing-function, cubic-bezier(0.16, 1, 0.3, 1));
   will-change: opacity, transform;
 }
 
 /* Stagger delays across sibling cards */
 .scroll-reveal .project-window-panel:nth-child(1),
 .scroll-reveal .skill-category-card:nth-child(1),
-.scroll-reveal .reveal-stagger-child:nth-child(1) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 0); }
+.scroll-reveal .reveal-stagger-child:nth-child(1) { transition-delay: calc(var(--reveal-stagger-delay, 80ms) * 0); }
 
 .scroll-reveal .project-window-panel:nth-child(2),
 .scroll-reveal .skill-category-card:nth-child(2),
-.scroll-reveal .reveal-stagger-child:nth-child(2) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 1); }
+.scroll-reveal .reveal-stagger-child:nth-child(2) { transition-delay: calc(var(--reveal-stagger-delay, 80ms) * 1); }
 
 .scroll-reveal .project-window-panel:nth-child(3),
 .scroll-reveal .skill-category-card:nth-child(3),
-.scroll-reveal .reveal-stagger-child:nth-child(3) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 2); }
+.scroll-reveal .reveal-stagger-child:nth-child(3) { transition-delay: calc(var(--reveal-stagger-delay, 80ms) * 2); }
 
 .scroll-reveal .project-window-panel:nth-child(4),
 .scroll-reveal .skill-category-card:nth-child(4),
-.scroll-reveal .reveal-stagger-child:nth-child(4) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 3); }
+.scroll-reveal .reveal-stagger-child:nth-child(4) { transition-delay: calc(var(--reveal-stagger-delay, 80ms) * 3); }
 
 .scroll-reveal .project-window-panel:nth-child(5),
 .scroll-reveal .skill-category-card:nth-child(5),
-.scroll-reveal .reveal-stagger-child:nth-child(5) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 4); }
+.scroll-reveal .reveal-stagger-child:nth-child(5) { transition-delay: calc(var(--reveal-stagger-delay, 80ms) * 4); }
 
 .scroll-reveal .project-window-panel:nth-child(6),
 .scroll-reveal .skill-category-card:nth-child(6),
-.scroll-reveal .reveal-stagger-child:nth-child(6) { transition-delay: calc(var(--reveal-stagger-delay, 100ms) * 5); }
+.scroll-reveal .reveal-stagger-child:nth-child(6) { transition-delay: calc(var(--reveal-stagger-delay, 80ms) * 5); }
 
 .scroll-reveal.is-revealed .project-window-panel,
 .scroll-reveal.is-revealed .skill-category-card,
@@ -152,17 +281,27 @@ section {
 
 /* Fallback: Disabled or Reduced Motion */
 body.scroll-reveal-disabled .scroll-reveal,
-body.scroll-reveal-disabled .scroll-reveal * {
+body.scroll-reveal-disabled .reveal-on-scroll,
+body.scroll-reveal-disabled .scroll-reveal *,
+body.scroll-reveal-disabled .reveal-on-scroll * {
+  animation: none !important;
   opacity: 1 !important;
   transform: none !important;
+  filter: none !important;
+  clip-path: none !important;
   transition: none !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .scroll-reveal,
-  .scroll-reveal * {
+  .reveal-on-scroll,
+  .scroll-reveal *,
+  .reveal-on-scroll * {
+    animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+    filter: none !important;
+    clip-path: none !important;
     transition: none !important;
   }
 }

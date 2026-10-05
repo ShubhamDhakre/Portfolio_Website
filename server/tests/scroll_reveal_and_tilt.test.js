@@ -56,10 +56,16 @@ assert.strictEqual(normalized.version, 5);
 assert.strictEqual(normalized.global.theme, 'matrix');
 assert.ok(normalized.global.scrollReveal, 'Normalized doc must populate missing scrollReveal');
 assert.strictEqual(normalized.global.scrollReveal.enabled, true);
-assert.strictEqual(normalized.global.scrollReveal.style, 'fade-up');
-assert.strictEqual(normalized.global.scrollReveal.duration, 650);
+assert.strictEqual(normalized.global.scrollReveal.style, '3d-circle');
+assert.strictEqual(normalized.global.scrollReveal.duration, 700);
 assert.strictEqual(normalized.global.scrollReveal.distance, 24);
-assert.strictEqual(normalized.global.scrollReveal.staggerDelay, 100);
+assert.strictEqual(normalized.global.scrollReveal.staggerDelay, 80);
+assert.strictEqual(normalized.global.scrollReveal.rotation, 30);
+assert.strictEqual(normalized.global.scrollReveal.scale, 0.8);
+assert.strictEqual(normalized.global.scrollReveal.perspective, 1400);
+assert.strictEqual(normalized.global.scrollReveal.blur, 8);
+assert.strictEqual(normalized.global.scrollReveal.rangeEntry, 10);
+assert.strictEqual(normalized.global.scrollReveal.rangeCover, 50);
 assert.strictEqual(normalized.global.scrollReveal.threshold, 0.1);
 assert.strictEqual(normalized.global.scrollReveal.replay, false);
 
@@ -86,16 +92,22 @@ const outOfBoundsPayload = {
     scrollReveal: {
       enabled: 'yes',
       style: 'invalid-style',
-      duration: 999999, // Should clamp to max 2000
+      rotation: 180, // Clamps to 45
+      scale: 3.5, // Clamps to 0.98
+      perspective: 9000, // Clamps to 2500
+      blur: 100, // Clamps to 20
+      rangeEntry: 80, // Clamps to 30
+      rangeCover: 120, // Clamps to 80
+      duration: 999999, // Should clamp to max 3000
       staggerDelay: -50, // Should clamp to min 0
-      distance: 500, // Should clamp to max 120
+      distance: 500, // Should clamp to max 200
       threshold: 5.5, // Should clamp to max 1.0
       replay: 'false'
     },
     contactTilt: {
       enabled: false,
       maxRotationX: 180, // Should clamp to max 45
-      maxRotationY: -90, // Should clamp to min 0
+      maxRotationY: -90, // Should clamp to min 1
       perspective: 50, // Should clamp to min 300
       speed: 10000, // Should clamp to max 2000
       returnSpeed: 10, // Should clamp to min 100
@@ -108,7 +120,13 @@ const outOfBoundsPayload = {
 
 const validated = validateSettingsPayload(outOfBoundsPayload);
 const valSR = validated.global.scrollReveal;
-assert.strictEqual(valSR.style, 'fade-up', 'Invalid animation style must default to fade-up');
+assert.strictEqual(valSR.style, '3d-circle', 'Invalid animation style must default to 3d-circle');
+assert.strictEqual(valSR.rotation, 45, 'Rotation must be clamped to max 45deg');
+assert.strictEqual(valSR.scale, 0.98, 'Scale must be clamped to max 0.98');
+assert.strictEqual(valSR.perspective, 2500, 'Perspective must be clamped to max 2500px');
+assert.strictEqual(valSR.blur, 20, 'Blur must be clamped to max 20px');
+assert.strictEqual(valSR.rangeEntry, 30, 'Range entry must be clamped to max 30%');
+assert.strictEqual(valSR.rangeCover, 80, 'Range cover must be clamped to max 80%');
 assert.strictEqual(valSR.duration, 3000, 'Duration must be clamped to max 3000ms');
 assert.strictEqual(valSR.staggerDelay, 0, 'Stagger delay must be clamped to min 0ms');
 assert.strictEqual(valSR.distance, 200, 'Distance must be clamped to max 200px');

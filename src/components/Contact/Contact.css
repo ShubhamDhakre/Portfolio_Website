@@ -12,6 +12,14 @@
   position: relative;
 }
 
+/* Isolated wrapper for Contact card scroll-driven 3D reveal animation */
+.contact-reveal-wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 840px;
+  margin: 0 auto;
+}
+
 .contact-card {
   position: relative;
   background: var(--glass-bg);

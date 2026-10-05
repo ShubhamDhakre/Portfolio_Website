@@ -32,7 +32,7 @@ function Projects({ onStateChange }) {
         <span className="section-component-pill">&lt;ProjectsWorkspace /&gt;</span>
       </div>
 
-      <div className="projects-intro">
+      <div className="projects-intro reveal-on-scroll">
         <p className="projects-intro-text">
           Application builds exploring multimodal AI analysis, responsive client-server architectures, and custom WebGL digital workspaces. Click any window to expand the full architecture breakdown, problem statements, and implementation status.
         </p>
@@ -40,12 +40,13 @@ function Projects({ onStateChange }) {
 
       <div className="projects-list">
         {projectsData.map((project) => (
-          <ProjectCard
-            key={project.id}
-            project={project}
-            isExpanded={expandedId === project.id}
-            onToggleExpand={() => handleToggleExpand(project.id)}
-          />
+          <div key={project.id} className="project-card-wrapper reveal-on-scroll">
+            <ProjectCard
+              project={project}
+              isExpanded={expandedId === project.id}
+              onToggleExpand={() => handleToggleExpand(project.id)}
+            />
+          </div>
         ))}
       </div>
     </section>

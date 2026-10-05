@@ -110,7 +110,7 @@ function Skills({ onStateChange }) {
       </div>
 
       {/* 1. Skill Network Container: Dedicated Independent Stacking Context */}
-      <div className="skill-network-container">
+      <div className="skill-network-container reveal-on-scroll">
         <div 
           className="network-viewport"
           onMouseLeave={handleMouseLeave}
@@ -225,7 +225,7 @@ function Skills({ onStateChange }) {
         <div className="overview-divider" />
       </div>
 
-      <div className="skills-cards-grid">
+      <div className="skills-cards-grid reveal-on-scroll">
         {filteredSkills.map((skill) => {
           const isSelected = selectedSkill?.id === skill.id;
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import useTheme from './hooks/useTheme';
-import useScrollProgress from './hooks/useScrollProgress';
+import { useIsScrolled } from './hooks/useScrollProgress';
 
 import Navbar from './components/Navbar/Navbar';
 import Hero from './components/Hero/Hero';
@@ -33,7 +33,7 @@ import './App.css';
  */
 export default function App() {
   const { theme, toggleTheme, setTheme, isExplicitlySelected } = useTheme();
-  const { progress, isScrolled } = useScrollProgress();
+  const isScrolled = useIsScrolled(30);
 
   // Synchronized Global Site Settings & Dual-Storage Content
   const {
@@ -105,6 +105,14 @@ export default function App() {
     }, 4000);
   }, []);
 
+  const handleEasterEggTrigger = useCallback(() => {
+    setIsEasterEggOpen(true);
+  }, []);
+
+  const handleUnlockPrivateLayer = useCallback(() => {
+    setIsPrivateLayerOpen(true);
+  }, []);
+
   // Keyboard shortcut listener: Ctrl+K / Cmd+K or backtick (`) to open developer console
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -157,38 +165,66 @@ export default function App() {
     const body = document.body;
     const srConfig = perfSettings?.scrollReveal || DEFAULT_SCROLL_REVEAL;
     const isEnabled = srConfig.enabled !== false && perfSettings?.scrollEffectsEnabled !== false;
-    const style = srConfig.style || 'fade-up';
-    const duration = Number(srConfig.duration) || 650;
-    const staggerDelay = Number(srConfig.staggerDelay) || 100;
+    const style = srConfig.style || '3d-circle';
+    const duration = Number(srConfig.duration) || 700;
+    const staggerDelay = Number(srConfig.staggerDelay) || 80;
     const distance = Number(srConfig.distance) || 24;
+    const rotation = typeof srConfig.rotation === 'number' ? srConfig.rotation : (Number(srConfig.rotation) || 30);
+    const scale = typeof srConfig.scale === 'number' ? srConfig.scale : (Number(srConfig.scale) || 0.8);
+    const perspective = typeof srConfig.perspective === 'number' ? srConfig.perspective : (Number(srConfig.perspective) || 1400);
+    const blur = typeof srConfig.blur === 'number' ? srConfig.blur : (!isNaN(Number(srConfig.blur)) ? Number(srConfig.blur) : 8);
+    const rangeEntry = typeof srConfig.rangeEntry === 'number' ? srConfig.rangeEntry : (Number(srConfig.rangeEntry) || 10);
+    const rangeCover = typeof srConfig.rangeCover === 'number' ? srConfig.rangeCover : (Number(srConfig.rangeCover) || 50);
     const threshold = Math.min(Math.max(Number(srConfig.threshold) || 0.1, 0.0), 1.0);
     const replay = Boolean(srConfig.replay);
 
     root.style.setProperty('--reveal-duration', `${duration}ms`);
     root.style.setProperty('--reveal-distance', `${distance}px`);
     root.style.setProperty('--reveal-stagger-delay', `${staggerDelay}ms`);
+    root.style.setProperty('--reveal-rotation', `${rotation}deg`);
+    root.style.setProperty('--reveal-scale', `${scale}`);
+    root.style.setProperty('--reveal-perspective', `${perspective}px`);
+    root.style.setProperty('--reveal-blur', `${blur}px`);
+    root.style.setProperty('--reveal-range-entry', `${rangeEntry}%`);
+    root.style.setProperty('--reveal-range-cover', `${rangeCover}%`);
     root.setAttribute('data-reveal-style', style);
+    root.setAttribute('data-reveal-replay', String(replay));
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     if (!isEnabled || prefersReducedMotion) {
       body.classList.add('scroll-reveal-disabled');
-      const elements = document.querySelectorAll('.scroll-reveal');
-      elements.forEach((el) => el.classList.add('is-revealed'));
+      const elements = document.querySelectorAll('.scroll-reveal, .reveal-on-scroll');
+      elements.forEach((el) => {
+        el.classList.add('is-revealed');
+        el.classList.add('has-revealed');
+      });
       return;
     }
 
     body.classList.remove('scroll-reveal-disabled');
 
+    const supportsScrollTimeline = typeof CSS !== 'undefined' && CSS.supports && CSS.supports('animation-timeline', 'view()');
+
+    if (supportsScrollTimeline) {
+      const revealElements = document.querySelectorAll('.scroll-reveal, .reveal-on-scroll');
+      revealElements.forEach((el) => {
+        el.classList.add('is-revealed');
+      });
+      return;
+    }
+
     const observerCallback = (entries, obs) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           entry.target.classList.add('is-revealed');
+          entry.target.classList.add('has-revealed');
           if (!replay) {
             obs.unobserve(entry.target);
           }
         } else if (replay) {
           entry.target.classList.remove('is-revealed');
+          entry.target.classList.remove('has-revealed');
         }
       });
     };
@@ -199,7 +235,7 @@ export default function App() {
       threshold,
     });
 
-    const revealElements = document.querySelectorAll('.scroll-reveal');
+    const revealElements = document.querySelectorAll('.scroll-reveal, .reveal-on-scroll');
     revealElements.forEach((el) => observer.observe(el));
 
     return () => {
@@ -213,6 +249,12 @@ export default function App() {
     perfSettings?.scrollReveal?.duration,
     perfSettings?.scrollReveal?.staggerDelay,
     perfSettings?.scrollReveal?.distance,
+    perfSettings?.scrollReveal?.rotation,
+    perfSettings?.scrollReveal?.scale,
+    perfSettings?.scrollReveal?.perspective,
+    perfSettings?.scrollReveal?.blur,
+    perfSettings?.scrollReveal?.rangeEntry,
+    perfSettings?.scrollReveal?.rangeCover,
     perfSettings?.scrollReveal?.threshold,
     perfSettings?.scrollReveal?.replay,
     perfSettings?.scrollEffectsEnabled,
@@ -274,7 +316,7 @@ export default function App() {
         isScrolled={isScrolled}
         theme={theme}
         toggleTheme={toggleTheme}
-        onEasterEggTrigger={() => setIsEasterEggOpen(true)}
+        onEasterEggTrigger={handleEasterEggTrigger}
         systemStatus={systemStatus}
       />
 
@@ -291,30 +333,29 @@ export default function App() {
       <main id="main-content">
         <Hero
           theme={theme}
-          scrollProgress={progress}
           onStateChange={handleStateChange}
-          onUnlockPrivateLayer={() => setIsPrivateLayerOpen(true)}
+          onUnlockPrivateLayer={handleUnlockPrivateLayer}
           isPrivateModeActive={isPrivateLayerOpen}
           perfSettings={perfSettings}
         />
 
-        <div className="scroll-reveal">
+        <div className="section-container">
           <About onStateChange={handleStateChange} />
         </div>
 
-        <div className="scroll-reveal">
+        <div className="section-container">
           <Skills onStateChange={handleStateChange} />
         </div>
 
-        <div className="scroll-reveal">
+        <div className="section-container">
           <Projects onStateChange={handleStateChange} />
         </div>
 
-        <div className="scroll-reveal">
+        <div className="section-container">
           <Experiments onStateChange={handleStateChange} />
         </div>
 
-        <div className="scroll-reveal">
+        <div className="section-container">
           <Contact tiltSettings={perfSettings?.contactTilt || DEFAULT_CONTACT_TILT} />
         </div>
       </main>
