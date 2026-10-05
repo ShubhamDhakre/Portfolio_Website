@@ -29,7 +29,6 @@
     var(--mouse-glow),
     transparent 75%
   );
-  transition: background 0.15s ease-out;
 }
 
 @media (pointer: coarse), (hover: none) {
@@ -149,7 +148,7 @@ section {
     animation-range: entry var(--reveal-range-entry, 5%) cover calc(var(--reveal-range-cover, 40%) * 0.7);
     animation-fill-mode: both;
     animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
-    will-change: transform, opacity, filter, clip-path;
+    will-change: transform, opacity;
   }
 
   /* Style: 3D Circle Reveal (default) */

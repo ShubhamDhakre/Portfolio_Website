@@ -346,15 +346,27 @@ function ThreeScene({
 
     const isMouseEnvironment = window.matchMedia('(pointer: fine) and (hover: hover)').matches;
 
+    let canvasRect = null;
+    const updateCanvasRect = () => {
+      if (renderer?.domElement) canvasRect = renderer.domElement.getBoundingClientRect();
+    };
+
+    const handlePointerEnter = () => {
+      updateCanvasRect();
+    };
+
     const handlePointerMove = (e) => {
       if (!isMouseEnvironment) return;
-      const rect = renderer.domElement.getBoundingClientRect();
+      if (!canvasRect) updateCanvasRect();
+      const rect = canvasRect;
+      if (!rect || rect.width <= 0 || rect.height <= 0) return;
       pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       pointerMoved = true;
     };
 
     const handlePointerLeave = () => {
+      canvasRect = null;
       isHovered = false;
       targetTiltX = 0;
       targetTiltY = 0;
@@ -363,15 +375,22 @@ function ThreeScene({
       if (onStateChangeRef.current) onStateChangeRef.current('CORE.READY');
     };
 
+    const invalidateCanvasRect = () => {
+      canvasRect = null;
+    };
+
     const domElement = renderer.domElement;
     if (isMouseEnvironment) {
+      domElement.addEventListener('pointerenter', handlePointerEnter);
       domElement.addEventListener('pointermove', handlePointerMove, { passive: true });
       domElement.addEventListener('pointerleave', handlePointerLeave);
+      window.addEventListener('scroll', invalidateCanvasRect, { passive: true });
     }
 
     // Responsive Canvas Resize
     let resizeTimer = null;
     const handleResize = () => {
+      canvasRect = null;
       if (!container) return;
       if (resizeTimer) cancelAnimationFrame(resizeTimer);
       resizeTimer = requestAnimationFrame(() => {
@@ -407,8 +426,8 @@ function ThreeScene({
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
 
-      // Skip render calculations when scrolled out of view to preserve CPU/GPU
-      if (!isVisibleInViewport) return;
+      // Skip render calculations when scrolled out of view or tab is hidden to preserve CPU/GPU
+      if (!isVisibleInViewport || document.hidden) return;
 
       const delta = clock.getDelta();
       const elapsedTime = clock.getElapsedTime();
@@ -561,8 +580,10 @@ function ThreeScene({
       window.removeEventListener('resize', handleResize);
       cancelAnimationFrame(animationFrameId);
       if (resizeTimer) cancelAnimationFrame(resizeTimer);
+      domElement.removeEventListener('pointerenter', handlePointerEnter);
       domElement.removeEventListener('pointermove', handlePointerMove);
       domElement.removeEventListener('pointerleave', handlePointerLeave);
+      window.removeEventListener('scroll', invalidateCanvasRect);
       domElement.removeEventListener('click', handleCanvasClick);
       domElement.removeEventListener('dblclick', handleCanvasDblClick);
 

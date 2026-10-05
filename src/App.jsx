@@ -86,9 +86,6 @@ export default function App() {
   const [isPrivateLayerOpen, setIsPrivateLayerOpen] = useState(false);
   const [customFocus, setCustomFocus] = useState(null);
 
-  // Active section tracking for WorkspaceHUD
-  const [activeSection, setActiveSection] = useState('hero');
-
   // Dynamic AI interface state engine: 'READY' | 'EXPLORING' | 'CORE_ACTIVE' | 'BUILDING'
   const [systemStatus, setSystemStatus] = useState('READY');
   const statusTimerRef = useRef(null);
@@ -127,36 +124,6 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Section Observer to update activeSection for WorkspaceHUD
-  useEffect(() => {
-    const sectionIds = ['hero', 'about', 'skills', 'projects', 'experiments', 'contact'];
-    const sectionElements = sectionIds
-      .map((id) => document.getElementById(id))
-      .filter(Boolean);
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
-          }
-        });
-      },
-      {
-        root: null,
-        rootMargin: '-30% 0px -40% 0px',
-        threshold: 0.1,
-      }
-    );
-
-    sectionElements.forEach((el) => observer.observe(el));
-
-    return () => {
-      sectionElements.forEach((el) => observer.unobserve(el));
-      observer.disconnect();
-    };
   }, []);
 
   // Dynamic Scroll Reveal Animation Engine
@@ -322,7 +289,6 @@ export default function App() {
 
       {/* Persistent Fixed Bottom-Left Session Uptime & Contextual Focus HUD */}
       <WorkspaceHUD
-        activeSection={activeSection}
         customFocus={customFocus || globalContent?.currentFocus}
       />
 

@@ -63,8 +63,6 @@ export default function CustomCursor({ cursorEnabled = true }) {
 
     let targetX = -100;
     let targetY = -100;
-    let currentX = -100;
-    let currentY = -100;
     let rafId = null;
     let lastCssX = -9999;
     let lastCssY = -9999;
@@ -72,17 +70,10 @@ export default function CustomCursor({ cursorEnabled = true }) {
     let isPointerInViewport = false;
     let lastBadge = '';
     let lastHover = false;
+    let pendingTarget = null;
 
     const animateCursor = () => {
-      // Smooth lerp tracking
-      currentX += (targetX - currentX) * 0.45;
-      currentY += (targetY - currentY) * 0.45;
-
-      if (cursorRef.current) {
-        cursorRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
-      }
-
-      // Coalesce ambient spotlight CSS variables smoothly in RAF instead of raw mouse event
+      // Coalesce ambient spotlight CSS variables smoothly in RAF
       const roundX = Math.round(targetX);
       const roundY = Math.round(targetY);
       if (roundX !== lastCssX || roundY !== lastCssY) {
@@ -92,7 +83,38 @@ export default function CustomCursor({ cursorEnabled = true }) {
         document.documentElement.style.setProperty('--mouse-y', `${roundY}px`);
       }
 
-      rafId = requestAnimationFrame(animateCursor);
+      // Check contextual cursor attributes coalesced in RAF instead of raw mouse event
+      if (pendingTarget) {
+        const target = pendingTarget;
+        pendingTarget = null;
+        const cursorAttr = target?.closest?.('[data-cursor]')?.getAttribute('data-cursor');
+        const isInteractive = target?.closest?.('a, button, [role="button"], input, textarea');
+
+        let nextBadge = '';
+        if (cursorAttr) {
+          const norm = cursorAttr.toLowerCase();
+          if (norm === 'inspect') nextBadge = 'INSPECT';
+          else if (norm === 'open') nextBadge = 'OPEN';
+          else if (norm === 'interact') nextBadge = 'INTERACT';
+          else if (norm === 'select') nextBadge = 'SELECT';
+          else if (norm === 'explore') nextBadge = 'EXPLORE';
+          else if (norm === 'view') nextBadge = 'VIEW';
+          else if (norm === 'private') nextBadge = 'PRIVATE';
+        }
+
+        if (nextBadge !== lastBadge) {
+          lastBadge = nextBadge;
+          setBadgeText(nextBadge);
+        }
+
+        const nextHover = !!isInteractive || !!cursorAttr;
+        if (nextHover !== lastHover) {
+          lastHover = nextHover;
+          setIsHovering(nextHover);
+        }
+      }
+
+      rafId = null;
     };
 
     const startLoop = () => {
@@ -111,49 +133,22 @@ export default function CustomCursor({ cursorEnabled = true }) {
     const handleMouseMove = (e) => {
       targetX = e.clientX;
       targetY = e.clientY;
+      pendingTarget = e.target;
 
       if (!hasMoved) {
         hasMoved = true;
-        currentX = targetX;
-        currentY = targetY;
-        if (cursorRef.current) {
-          cursorRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
-        }
+      }
+
+      // Direct 1:1 hardware-accurate cursor tracking with zero input lag
+      if (cursorRef.current) {
+        cursorRef.current.style.transform = `translate3d(${targetX}px, ${targetY}px, 0)`;
       }
 
       if (!isPointerInViewport) {
         isPointerInViewport = true;
         setIsVisible(true);
-        startLoop();
       }
-
-      // Check contextual cursor attributes
-      const target = e.target;
-      const cursorAttr = target?.closest?.('[data-cursor]')?.getAttribute('data-cursor');
-      const isInteractive = target?.closest?.('a, button, [role="button"], input, textarea');
-
-      let nextBadge = '';
-      if (cursorAttr) {
-        const norm = cursorAttr.toLowerCase();
-        if (norm === 'inspect') nextBadge = 'INSPECT';
-        else if (norm === 'open') nextBadge = 'OPEN';
-        else if (norm === 'interact') nextBadge = 'INTERACT';
-        else if (norm === 'select') nextBadge = 'SELECT';
-        else if (norm === 'explore') nextBadge = 'EXPLORE';
-        else if (norm === 'view') nextBadge = 'VIEW';
-        else if (norm === 'private') nextBadge = 'PRIVATE';
-      }
-
-      if (nextBadge !== lastBadge) {
-        lastBadge = nextBadge;
-        setBadgeText(nextBadge);
-      }
-
-      const nextHover = !!isInteractive || !!cursorAttr;
-      if (nextHover !== lastHover) {
-        lastHover = nextHover;
-        setIsHovering(nextHover);
-      }
+      startLoop();
     };
 
     const handleMouseLeave = () => {

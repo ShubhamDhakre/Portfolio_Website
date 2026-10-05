@@ -42,16 +42,75 @@ const SECTION_METADATA = {
  * Subtle, persistent bottom-left developer workspace indicator.
  * Displays session uptime counter, living heartbeat, and contextual section focus.
  */
-function WorkspaceHUD({ activeSection = 'hero', customFocus = null }) {
-  // Session uptime counter (seconds since page load)
+function WorkspaceHUD({ activeSection: activeSectionProp, customFocus = null }) {
+  // Internal active section tracking via IntersectionObserver (avoids re-rendering App root)
+  const [internalSection, setInternalSection] = useState('hero');
+  const activeSection = activeSectionProp || internalSection;
+
+  useEffect(() => {
+    if (activeSectionProp) return; // If explicitly controlled from outside, skip internal observer
+
+    const sectionIds = ['hero', 'about', 'skills', 'projects', 'experiments', 'contact'];
+    const elements = sectionIds.map((id) => document.getElementById(id)).filter(Boolean);
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setInternalSection(entry.target.id);
+          }
+        });
+      },
+      {
+        root: null,
+        rootMargin: '-30% 0px -40% 0px',
+        threshold: 0.05,
+      }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+    return () => {
+      elements.forEach((el) => observer.unobserve(el));
+      observer.disconnect();
+    };
+  }, [activeSectionProp]);
+
+  // Session uptime counter (seconds since page load, paused when tab is hidden)
   const [secondsElapsed, setSecondsElapsed] = useState(0);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setSecondsElapsed((prev) => prev + 1);
-    }, 1000);
+    let timer = null;
 
-    return () => clearInterval(timer);
+    const startTimer = () => {
+      if (!timer && !document.hidden) {
+        timer = setInterval(() => {
+          setSecondsElapsed((prev) => prev + 1);
+        }, 1000);
+      }
+    };
+
+    const stopTimer = () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopTimer();
+      } else {
+        startTimer();
+      }
+    };
+
+    startTimer();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopTimer();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   // Format seconds into HH:MM:SS

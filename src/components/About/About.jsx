@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import profilePhoto from '../../assets/profile.webp';
 import './About.css';
 
@@ -105,27 +105,61 @@ function About({ onStateChange }) {
 
   const currentNode = architectureNodes.find((n) => n.id === activeArchNode) || architectureNodes[1];
 
-  // Interactive 3D Perspective Tilt on Profile Photo (Bends & Reacts to cursor)
-  const [photoTilt, setPhotoTilt] = useState({ x: 0, y: 0, glareX: 50, glareY: 50, active: false });
+  // Direct DOM refs for Profile Photo tilt (zero React component tree re-renders on mousemove)
+  const photoFrameRef = useRef(null);
+  const photoGlareRef = useRef(null);
+  const photoRectRef = useRef(null);
+  const photoRafRef = useRef(null);
+
+  const handlePhotoMouseEnter = (e) => {
+    photoRectRef.current = e.currentTarget.getBoundingClientRect();
+    if (photoFrameRef.current) {
+      photoFrameRef.current.style.transition = 'transform 0.08s ease-out';
+    }
+  };
 
   const handlePhotoMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const xRatio = (e.clientX - rect.left) / rect.width;
-    const yRatio = (e.clientY - rect.top) / rect.height;
-    const rotateY = (xRatio - 0.5) * 16; // -8 to +8 deg
-    const rotateX = -(yRatio - 0.5) * 16; // -8 to +8 deg
-    setPhotoTilt({
-      x: rotateY,
-      y: rotateX,
-      glareX: Math.round(xRatio * 100),
-      glareY: Math.round(yRatio * 100),
-      active: true
+    if (photoRafRef.current) cancelAnimationFrame(photoRafRef.current);
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+
+    photoRafRef.current = requestAnimationFrame(() => {
+      const rect = photoRectRef.current;
+      const frame = photoFrameRef.current;
+      if (!rect || !frame) return;
+
+      const xRatio = (clientX - rect.left) / rect.width;
+      const yRatio = (clientY - rect.top) / rect.height;
+      const rotateY = (xRatio - 0.5) * 16;
+      const rotateX = -(yRatio - 0.5) * 16;
+
+      frame.style.transform = `perspective(800px) rotateY(${rotateY.toFixed(2)}deg) rotateX(${rotateX.toFixed(2)}deg) scale3d(1.025, 1.025, 1.025)`;
+
+      if (photoGlareRef.current) {
+        photoGlareRef.current.style.opacity = '1';
+        photoGlareRef.current.style.background = `radial-gradient(circle at ${Math.round(xRatio * 100)}% ${Math.round(yRatio * 100)}%, rgba(255, 255, 255, 0.16) 0%, rgba(139, 123, 184, 0.08) 40%, transparent 70%)`;
+      }
     });
   };
 
   const handlePhotoMouseLeave = () => {
-    setPhotoTilt({ x: 0, y: 0, glareX: 50, glareY: 50, active: false });
+    if (photoRafRef.current) cancelAnimationFrame(photoRafRef.current);
+    photoRectRef.current = null;
+    if (photoFrameRef.current) {
+      photoFrameRef.current.style.transition = 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)';
+      photoFrameRef.current.style.transform = 'perspective(800px) rotateY(0deg) rotateX(0deg) scale3d(1, 1, 1)';
+    }
+    if (photoGlareRef.current) {
+      photoGlareRef.current.style.opacity = '0';
+      photoGlareRef.current.style.background = 'none';
+    }
   };
+
+  useEffect(() => {
+    return () => {
+      if (photoRafRef.current) cancelAnimationFrame(photoRafRef.current);
+    };
+  }, []);
 
   return (
     <section id="about" className="about-section">
@@ -144,15 +178,11 @@ function About({ onStateChange }) {
           <div className="about-profile-layout">
             <div className="about-photo-wrapper">
               <div
+                ref={photoFrameRef}
                 className="about-photo-frame"
+                onMouseEnter={handlePhotoMouseEnter}
                 onMouseMove={handlePhotoMouseMove}
                 onMouseLeave={handlePhotoMouseLeave}
-                style={{
-                  transform: photoTilt.active
-                    ? `perspective(800px) rotateY(${photoTilt.x.toFixed(2)}deg) rotateX(${photoTilt.y.toFixed(2)}deg) scale3d(1.025, 1.025, 1.025)`
-                    : 'perspective(800px) rotateY(0deg) rotateX(0deg) scale3d(1, 1, 1)',
-                  transition: photoTilt.active ? 'transform 0.08s ease-out' : 'transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
-                }}
               >
                 {/* Atmospheric Ambient Glow behind photo */}
                 <div className="photo-ambient-glow" aria-hidden="true" />
@@ -173,14 +203,9 @@ function About({ onStateChange }) {
 
                 {/* Holographic Specular Glare (bends dynamically with tilt) */}
                 <div
+                  ref={photoGlareRef}
                   className="photo-specular-glare"
                   aria-hidden="true"
-                  style={{
-                    background: photoTilt.active
-                      ? `radial-gradient(circle at ${photoTilt.glareX}% ${photoTilt.glareY}%, rgba(255, 255, 255, 0.16) 0%, rgba(139, 123, 184, 0.08) 40%, transparent 70%)`
-                      : 'none',
-                    opacity: photoTilt.active ? 1 : 0
-                  }}
                 />
 
                 {/* 4 Precision HUD Corners around image corners only */}

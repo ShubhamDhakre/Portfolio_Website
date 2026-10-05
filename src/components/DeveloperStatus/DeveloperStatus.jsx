@@ -72,14 +72,40 @@ function DeveloperStatus() {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const transitionTimerRef = React.useRef(null);
 
-  // Self-contained live clock interval and timer cleanup
+  // Self-contained live clock interval and timer cleanup (paused on hidden tabs)
   useEffect(() => {
-    const timer = setInterval(() => {
-      setNow(new Date());
-    }, 1000);
+    let timer = null;
+
+    const startTimer = () => {
+      if (!timer && !document.hidden) {
+        timer = setInterval(() => {
+          setNow(new Date());
+        }, 1000);
+      }
+    };
+
+    const stopTimer = () => {
+      if (timer) {
+        clearInterval(timer);
+        timer = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopTimer();
+      } else {
+        setNow(new Date());
+        startTimer();
+      }
+    };
+
+    startTimer();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      clearInterval(timer);
+      stopTimer();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
     };
   }, []);

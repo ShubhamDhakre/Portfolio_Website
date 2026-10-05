@@ -48,18 +48,32 @@ function Contact({ tiltSettings = DEFAULT_CONTACT_TILT }) {
       return;
     }
 
+    let cardRect = null;
+    const updateRect = () => {
+      if (card) cardRect = card.getBoundingClientRect();
+    };
+
+    const handleInvalidateRect = () => {
+      cardRect = null;
+    };
+
     const onPointerEnter = () => {
+      updateRect();
       card.style.willChange = 'transform';
       card.style.transition = `transform ${speed}ms cubic-bezier(0.03, 0.98, 0.52, 0.99)`;
     };
 
     const onPointerMove = (e) => {
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      const clientX = e.clientX;
+      const clientY = e.clientY;
+
       rafIdRef.current = requestAnimationFrame(() => {
-        const rect = card.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0) return;
-        const normX = (e.clientX - rect.left) / rect.width;
-        const normY = (e.clientY - rect.top) / rect.height;
+        if (!cardRect) updateRect();
+        const rect = cardRect;
+        if (!rect || rect.width <= 0 || rect.height <= 0) return;
+        const normX = (clientX - rect.left) / rect.width;
+        const normY = (clientY - rect.top) / rect.height;
         const px = (normX - 0.5) * 2;
         const py = (normY - 0.5) * 2;
         const rotX = -py * maxRotX;
@@ -76,6 +90,7 @@ function Contact({ tiltSettings = DEFAULT_CONTACT_TILT }) {
     };
 
     const onPointerLeave = () => {
+      cardRect = null;
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
       card.style.transition = `transform ${returnSpeed}ms cubic-bezier(0.16, 1, 0.3, 1), border-color var(--transition-normal), box-shadow var(--transition-normal)`;
       card.style.transform = `perspective(${perspective}px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
@@ -87,12 +102,16 @@ function Contact({ tiltSettings = DEFAULT_CONTACT_TILT }) {
     card.addEventListener('pointerenter', onPointerEnter);
     card.addEventListener('pointermove', onPointerMove);
     card.addEventListener('pointerleave', onPointerLeave);
+    window.addEventListener('scroll', handleInvalidateRect, { passive: true });
+    window.addEventListener('resize', handleInvalidateRect, { passive: true });
 
     return () => {
       if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
       card.removeEventListener('pointerenter', onPointerEnter);
       card.removeEventListener('pointermove', onPointerMove);
       card.removeEventListener('pointerleave', onPointerLeave);
+      window.removeEventListener('scroll', handleInvalidateRect);
+      window.removeEventListener('resize', handleInvalidateRect);
       card.style.transform = '';
       card.style.transition = '';
       if (glare) glare.style.opacity = '0';

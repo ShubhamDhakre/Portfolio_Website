@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import './Experiments.css';
 
 /**
@@ -28,16 +28,38 @@ function Experiments({ onStateChange }) {
   const [fillerCount, setFillerCount] = useState(2);
   const [audioLevel, setAudioLevel] = useState(68);
 
+  const glassRectRef = useRef(null);
+  const glassRafRef = useRef(null);
+
+  const handleGlassMouseEnter = (e) => {
+    glassRectRef.current = e.currentTarget.getBoundingClientRect();
+  };
+
   const handleGlassMouseMove = (e) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width - 0.5) * 22;
-    const y = ((e.clientY - rect.top) / rect.height - 0.5) * -22;
-    setGlassTilt({ x, y });
+    if (glassRafRef.current) cancelAnimationFrame(glassRafRef.current);
+    const clientX = e.clientX;
+    const clientY = e.clientY;
+
+    glassRafRef.current = requestAnimationFrame(() => {
+      const rect = glassRectRef.current;
+      if (!rect) return;
+      const x = ((clientX - rect.left) / rect.width - 0.5) * 22;
+      const y = ((clientY - rect.top) / rect.height - 0.5) * -22;
+      setGlassTilt({ x, y });
+    });
   };
 
   const handleGlassMouseLeave = () => {
+    if (glassRafRef.current) cancelAnimationFrame(glassRafRef.current);
+    glassRectRef.current = null;
     setGlassTilt({ x: 0, y: 0 });
   };
+
+  useEffect(() => {
+    return () => {
+      if (glassRafRef.current) cancelAnimationFrame(glassRafRef.current);
+    };
+  }, []);
 
   const handleSelectExp = (index) => {
     setActiveExp(index);
@@ -159,6 +181,7 @@ function Experiments({ onStateChange }) {
                 <div className="sandbox-tilt-container">
                   <div
                     className="tilt-glass-card"
+                    onMouseEnter={handleGlassMouseEnter}
                     onMouseMove={handleGlassMouseMove}
                     onMouseLeave={handleGlassMouseLeave}
                     style={{

@@ -19,11 +19,14 @@ function PerformanceMonitorHUD({ perfSettings = {}, devPerformance, onClose }) {
   });
 
   const devPerfConfig = devPerformance || perfSettings.devPerformance || DEFAULT_DEV_PERFORMANCE;
+  const isVisible = devPerfConfig.visible !== false;
 
   useEffect(() => {
+    if (!isVisible) return;
+
     let frameCount = 0;
     let lastTime = performance.now();
-    let animId;
+    let animId = null;
 
     const loop = (now) => {
       frameCount++;
@@ -39,21 +42,46 @@ function PerformanceMonitorHUD({ perfSettings = {}, devPerformance, onClose }) {
       animId = requestAnimationFrame(loop);
     };
 
-    animId = requestAnimationFrame(loop);
+    const startLoop = () => {
+      if (!animId && !document.hidden) {
+        lastTime = performance.now();
+        frameCount = 0;
+        animId = requestAnimationFrame(loop);
+      }
+    };
+
+    const stopLoop = () => {
+      if (animId) {
+        cancelAnimationFrame(animId);
+        animId = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        stopLoop();
+      } else {
+        startLoop();
+      }
+    };
+
+    startLoop();
 
     const handleResize = () => {
       setViewport({ w: window.innerWidth, h: window.innerHeight });
     };
 
     window.addEventListener('resize', handleResize, { passive: true });
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      if (animId) cancelAnimationFrame(animId);
+      stopLoop();
       window.removeEventListener('resize', handleResize);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, [isVisible]);
 
-  if (devPerfConfig.visible === false) {
+  if (!isVisible) {
     return null;
   }
 

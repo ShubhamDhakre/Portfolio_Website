@@ -422,8 +422,7 @@ html {
 body {
   min-height: 100vh;
   min-height: 100dvh;
-  background: var(--bg-radial);
-  background-attachment: fixed;
+  background-color: var(--bg-primary);
   color: var(--text-primary);
   overflow-x: clip;
   width: 100%;
@@ -435,6 +434,17 @@ body {
   font-size: clamp(14px, 1.1vw, 15.5px);
   letter-spacing: -0.005em;
   transition: background-color var(--transition-slow), color var(--transition-slow);
+}
+
+/* GPU-composited stationary radial background layer: restores native compositor-driven scrolling */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--bg-radial);
+  pointer-events: none;
+  z-index: -1;
+  will-change: transform;
 }
 
 #root {

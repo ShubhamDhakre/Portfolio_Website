@@ -188,12 +188,37 @@ function WebSystemBackground({
     const maxDistance = isMobile ? 120 : 180;
     const maxDistanceSq = maxDistance * maxDistance;
 
+    let lastFrameTime = performance.now();
+    let isScrolling = false;
+    let scrollTimer = null;
+
+    const handleScroll = () => {
+      isScrolling = true;
+      if (scrollTimer) clearTimeout(scrollTimer);
+      scrollTimer = setTimeout(() => {
+        isScrolling = false;
+      }, 120);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     // Main Render Loop
     const render = () => {
       if (document.hidden) {
+        animationFrameId = null;
+        return;
+      }
+
+      const now = performance.now();
+      const elapsed = now - lastFrameTime;
+      // Target ~36-40fps for ambient background; throttle to ~25fps during active scrolling to free GPU
+      const targetInterval = isScrolling ? 40 : (isMobile ? 32 : 24);
+
+      if (elapsed < targetInterval) {
         animationFrameId = requestAnimationFrame(render);
         return;
       }
+      lastFrameTime = now - (elapsed % targetInterval);
 
       ctx.clearRect(0, 0, width, height);
 
@@ -236,7 +261,8 @@ function WebSystemBackground({
           ctx.fill();
         }
 
-        // Draw Connections
+        // Draw Connections (Batched into a single path for high performance)
+        ctx.beginPath();
         for (let i = 0; i < nodes.length; i++) {
           const nA = nodes[i];
           for (let j = i + 1; j < nodes.length; j++) {
@@ -246,9 +272,6 @@ function WebSystemBackground({
             if (Math.abs(dx) < maxDistance && Math.abs(dy) < maxDistance) {
               const distSq = dx * dx + dy * dy;
               if (distSq < maxDistanceSq) {
-                const dist = Math.sqrt(distSq);
-                const alpha = (1 - dist / maxDistance) * (isNeural ? 0.28 : 0.18);
-                ctx.beginPath();
                 if (isNeural) {
                   const midX = (nA.x + nB.x) / 2 + Math.sin(nodeCount + i) * 6;
                   const midY = (nA.y + nB.y) / 2 + Math.cos(nodeCount + j) * 6;
@@ -258,13 +281,13 @@ function WebSystemBackground({
                   ctx.moveTo(nA.x, nA.y);
                   ctx.lineTo(nB.x, nB.y);
                 }
-                ctx.strokeStyle = `rgba(${primaryRGB}, ${alpha})`;
-                ctx.lineWidth = isNeural ? 1.2 : 0.9;
-                ctx.stroke();
               }
             }
           }
         }
+        ctx.strokeStyle = `rgba(${primaryRGB}, ${isNeural ? 0.22 : 0.14})`;
+        ctx.lineWidth = isNeural ? 1.1 : 0.8;
+        ctx.stroke();
 
         // Draw Traveling Packets
         if (!prefersReducedMotion) {
@@ -392,10 +415,21 @@ function WebSystemBackground({
       animationFrameId = requestAnimationFrame(render);
     };
 
+    const handleVisibilityChange = () => {
+      if (!document.hidden && !animationFrameId) {
+        lastFrameTime = performance.now();
+        animationFrameId = requestAnimationFrame(render);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     render();
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (scrollTimer) clearTimeout(scrollTimer);
       cancelAnimationFrame(animationFrameId);
       if (resizeTimer) cancelAnimationFrame(resizeTimer);
     };
