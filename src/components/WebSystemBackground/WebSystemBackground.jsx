@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, memo } from 'react';
+import spaceWallpaper from '../../assets/space-wallpaper.webp';
+import dayWallpaper from '../../assets/day-wallpaper.webp';
 import './WebSystemBackground.css';
 
 /**
@@ -19,6 +21,7 @@ function WebSystemBackground({
   customBackgroundConfig = null
 }) {
   const canvasRef = useRef(null);
+  const wallpaperRef = useRef(null);
   const mouseRef = useRef({ x: -9999, y: -9999 });
   const reducedMotionRef = useRef(
     typeof window !== 'undefined' && window.matchMedia
@@ -30,6 +33,14 @@ function WebSystemBackground({
   const backgroundEnabled = perfSettings.backgroundEnabled !== false;
   const backgroundQuality = perfSettings.backgroundQuality || 'AUTO';
   const mouseEffectsEnabled = perfSettings.mouseEffectsEnabled !== false;
+
+  useEffect(() => {
+    // Preload both wallpapers to guarantee zero flash or delay on first theme toggle
+    const imgNight = new Image();
+    imgNight.src = spaceWallpaper;
+    const imgDay = new Image();
+    imgDay.src = dayWallpaper;
+  }, []);
 
   useEffect(() => {
     if (!mouseEffectsEnabled) return;
@@ -58,6 +69,9 @@ function WebSystemBackground({
     if (!canvas || !backgroundEnabled) return;
     const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
+
+    let currentParallaxX = 0;
+    let currentParallaxY = 0;
 
     let animationFrameId;
     let width = (canvas.width = window.innerWidth);
@@ -259,6 +273,33 @@ function WebSystemBackground({
       const mouseX = mouseRef.current.x;
       const mouseY = mouseRef.current.y;
       const hasActiveMouse = mouseX >= 0 && mouseY >= 0;
+
+      // Subtle multi-depth wallpaper parallax
+      if (wallpaperRef.current) {
+        if (prefersReducedMotion) {
+          currentParallaxX = 0;
+          currentParallaxY = 0;
+          wallpaperRef.current.style.transform = 'translate3d(0, 0, 0)';
+        } else if (!isMobile && hasActiveMouse) {
+          // Desktop fine pointer: restrained multi-depth parallax
+          const targetX = ((mouseX / width) - 0.5) * -24;
+          const targetY = ((mouseY / height) - 0.5) * -18;
+          currentParallaxX += (targetX - currentParallaxX) * 0.05;
+          currentParallaxY += (targetY - currentParallaxY) * 0.05;
+          wallpaperRef.current.style.transform = `translate3d(${currentParallaxX.toFixed(2)}px, ${currentParallaxY.toFixed(2)}px, 0)`;
+        } else if (!isMobile && !hasActiveMouse) {
+          // Smooth return to center when mouse leaves window
+          currentParallaxX += (0 - currentParallaxX) * 0.03;
+          currentParallaxY += (0 - currentParallaxY) * 0.03;
+          if (Math.abs(currentParallaxX) > 0.02 || Math.abs(currentParallaxY) > 0.02) {
+            wallpaperRef.current.style.transform = `translate3d(${currentParallaxX.toFixed(2)}px, ${currentParallaxY.toFixed(2)}px, 0)`;
+          }
+        } else if (isMobile) {
+          // Mobile / touch devices: gentle scroll-based parallax
+          const mobileScrollOffset = (window.scrollY * 0.03) % 20;
+          wallpaperRef.current.style.transform = `translate3d(0, ${-mobileScrollOffset.toFixed(1)}px, 0)`;
+        }
+      }
 
       // -----------------------------------------------------------------------
       // MODE 1 & 2: DIGITAL WEB / NEURAL FLOW
@@ -482,6 +523,22 @@ function WebSystemBackground({
 
   return (
     <div className={`web-system-bg-wrapper bg-mode-${effectiveBgType}`} aria-hidden="true">
+      {/* Dynamic Parallax Wallpaper Container with Seamless Dual-Theme Crossfade */}
+      <div
+        ref={wallpaperRef}
+        className={`web-system-wallpaper-container ${theme === 'day' ? 'is-day-theme' : 'is-night-theme'}`}
+        data-active-theme={theme}
+      >
+        <div
+          className="web-system-wallpaper wallpaper-night"
+          style={{ backgroundImage: `url(${spaceWallpaper})` }}
+        />
+        <div
+          className="web-system-wallpaper wallpaper-day"
+          style={{ backgroundImage: `url(${dayWallpaper})` }}
+        />
+      </div>
+
       {/* HTML5 Canvas Surface */}
       <canvas ref={canvasRef} className="web-system-canvas" />
 

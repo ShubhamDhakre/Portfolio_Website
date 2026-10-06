@@ -1,13 +1,13 @@
 {
-  "version": 25,
-  "updatedAt": "2026-10-05T13:02:43.570Z",
+  "version": 27,
+  "updatedAt": "2026-10-06T06:10:29.366Z",
   "updatedBy": "admin",
   "global": {
     "theme": "minimal",
     "customThemeName": "",
     "background": "digital-web",
     "customBackgroundName": "",
-    "performanceMode": "AUTO",
+    "performanceMode": "EXTREME_QUALITY",
     "threeEnabled": true,
     "threeInteraction": true,
     "digitalCoreEnabled": true,
@@ -23,7 +23,7 @@
     "animationQuality": "AUTO",
     "renderScale": "AUTO",
     "devPerformance": {
-      "visible": false,
+      "visible": true,
       "showFPS": true,
       "showFrameTime": true,
       "showDPR": true,
@@ -33,6 +33,32 @@
       "showGlassBlur": true,
       "showScrollFX": true,
       "showViewport": true
+    },
+    "scrollReveal": {
+      "enabled": true,
+      "style": "3d-circle",
+      "rotation": 30,
+      "scale": 0.8,
+      "perspective": 1400,
+      "blur": 8,
+      "rangeEntry": 10,
+      "rangeCover": 50,
+      "duration": 700,
+      "staggerDelay": 80,
+      "distance": 24,
+      "threshold": 0.1,
+      "replay": false
+    },
+    "contactTilt": {
+      "enabled": true,
+      "maxRotationX": 12,
+      "maxRotationY": 12,
+      "perspective": 1000,
+      "speed": 400,
+      "returnSpeed": 600,
+      "hoverScale": 1.02,
+      "lighting": true,
+      "lightingIntensity": 0.35
     }
   },
   "settings": {
@@ -40,7 +66,7 @@
     "customThemeName": "",
     "background": "digital-web",
     "customBackgroundName": "",
-    "performanceMode": "AUTO",
+    "performanceMode": "EXTREME_QUALITY",
     "threeEnabled": true,
     "threeInteraction": true,
     "digitalCoreEnabled": true,
@@ -56,7 +82,7 @@
     "animationQuality": "AUTO",
     "renderScale": "AUTO",
     "devPerformance": {
-      "visible": false,
+      "visible": true,
       "showFPS": true,
       "showFrameTime": true,
       "showDPR": true,
@@ -66,13 +92,39 @@
       "showGlassBlur": true,
       "showScrollFX": true,
       "showViewport": true
+    },
+    "scrollReveal": {
+      "enabled": true,
+      "style": "3d-circle",
+      "rotation": 30,
+      "scale": 0.8,
+      "perspective": 1400,
+      "blur": 8,
+      "rangeEntry": 10,
+      "rangeCover": 50,
+      "duration": 700,
+      "staggerDelay": 80,
+      "distance": 24,
+      "threshold": 0.1,
+      "replay": false
+    },
+    "contactTilt": {
+      "enabled": true,
+      "maxRotationX": 12,
+      "maxRotationY": 12,
+      "perspective": 1000,
+      "speed": 400,
+      "returnSpeed": 600,
+      "hoverScale": 1.02,
+      "lighting": true,
+      "lightingIntensity": 0.35
     }
   },
   "content": {
     "notes": "Refining liquid glass depth & 3D raycasting performance\nExperiment with client-side WebGL shader refraction next",
     "currentFocus": "Web + AI Systems // Full-stack Architecture & ML",
     "currentExperiment": "Three.js Digital Glass Core",
-    "developerNote": "Build first. Refine later. Keep the interface curious."
+    "developerNote": "Cross-instance sync verified."
   },
   "customThemes": [],
   "customBackgrounds": []

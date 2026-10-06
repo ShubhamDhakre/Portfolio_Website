@@ -58,6 +58,12 @@ app.use((req, res, next) => {
 });
 
 // Middlewares
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+    req._body = true;
+  }
+  next();
+});
 app.use(express.json({ limit: '500kb' }));
 app.use(cookieParser());
 
@@ -84,29 +90,37 @@ export function getAllowedOrigins() {
   if (process.env.VERCEL_PROJECT_PRODUCTION_URL) {
     vercelOrigins.push(`https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`);
   }
+  if (process.env.VERCEL_BRANCH_URL) {
+    vercelOrigins.push(`https://${process.env.VERCEL_BRANCH_URL}`);
+  }
 
   return new Set([...ALLOWED_LOCAL_ORIGINS, ...customOrigins, ...vercelOrigins]);
 }
 
-app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests without Origin header (same-origin browser navigation, curl, serverless internal rewrites)
-    if (!origin) {
-      return callback(null, true);
-    }
+app.use((req, res, next) => {
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests without Origin header (same-origin browser navigation, curl, serverless internal rewrites)
+      if (!origin) {
+        return callback(null, true);
+      }
 
-    const allowed = getAllowedOrigins();
-    if (allowed.has(origin)) {
-      return callback(null, true);
-    }
+      const allowed = getAllowedOrigins();
+      const host = req.headers['x-forwarded-host'] || req.headers['host'];
+      const isSameHost = host && (origin === `https://${host}` || origin === `http://${host}`);
 
-    // Reject unauthorized cross-origin requests
-    return callback(new Error(`CORS policy: Origin '${origin}' is not allowed.`));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+      if (allowed.has(origin) || isSameHost) {
+        return callback(null, true);
+      }
+
+      // Reject unauthorized cross-origin requests
+      return callback(new Error(`CORS policy: Origin '${origin}' is not allowed.`));
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  })(req, res, next);
+});
 
 /**
  * State-changing request origin validation middleware (CSRF defense).
@@ -131,7 +145,10 @@ export function validateStateChangeOrigin(req, res, next) {
       }
     }
 
-    if (requestOrigin && !allowed.has(requestOrigin)) {
+    const host = req.headers['x-forwarded-host'] || req.headers['host'];
+    const isSameHost = host && (requestOrigin === `https://${host}` || requestOrigin === `http://${host}`);
+
+    if (requestOrigin && !allowed.has(requestOrigin) && !isSameHost) {
       return res.status(403).json({
         error: 'Forbidden',
         message: `Cross-origin state modification from '${requestOrigin}' is not permitted.`
@@ -153,10 +170,24 @@ app.use(validateStateChangeOrigin);
 
 // Route normalization for Vercel Serverless Function rewrites
 app.use((req, res, next) => {
-  if (req.url === '/api/index.js' || req.url === '/api/index') {
-    const original = req.headers['x-matched-path'] || req.headers['x-invoke-path'] || req.originalUrl;
-    if (original && original !== req.url) {
-      req.url = original;
+  const urlPath = req.url.split('?')[0];
+  if (urlPath === '/api/index.js' || urlPath === '/api/index') {
+    if (req.query && (req.query.path || req.query.__path)) {
+      const rawSubpath = req.query.path || req.query.__path;
+      const subpath = Array.isArray(rawSubpath) ? rawSubpath.join('/') : String(rawSubpath);
+      delete req.query.path;
+      delete req.query.__path;
+      const remainingQuery = new URLSearchParams(req.query).toString();
+      req.url = `/api/${subpath.replace(/^\/+/, '')}${remainingQuery ? `?${remainingQuery}` : ''}`;
+    } else {
+      const original =
+        req.headers['x-matched-path'] ||
+        req.headers['x-forwarded-url'] ||
+        req.headers['x-original-url'] ||
+        req.headers['x-invoke-path'];
+      if (original && original !== req.url && original !== '/api/index.js' && original !== '/api/index') {
+        req.url = original;
+      }
     }
   }
   next();
@@ -174,9 +205,18 @@ app.use((req, res, next) => {
 app.use(['/api/admin', '/admin'], adminRoutes);
 app.use(['/api/site-settings', '/site-settings'], siteSettingsRoutes);
 
-// Health check endpoint
+// Health check and API root endpoints
 app.get(['/api/health', '/health'], (req, res) => {
   res.status(200).json({ status: 'ok', service: 'portfolio-control-center-api' });
+});
+
+app.get(['/api', '/api/index.js', '/api/index'], (req, res) => {
+  res.status(200).json({ status: 'ok', service: 'portfolio-control-center-api' });
+});
+
+// Explicit 404 handler for all unmatched API and Admin routes across all HTTP methods
+app.all(['/api', '/api/{*path}', '/admin', '/admin/{*path}'], (req, res) => {
+  res.status(404).json({ error: 'API route not found' });
 });
 
 // Serve production static assets if dist directory exists (local standalone server)
@@ -185,7 +225,7 @@ app.use(express.static(distPath));
 
 // Fallback to index.html for SPA client-side routing in production (local standalone server)
 app.get('{*path}', (req, res, next) => {
-  if (req.path.startsWith('/api')) {
+  if (req.path.startsWith('/api') || req.path.startsWith('/admin')) {
     return res.status(404).json({ error: 'API route not found' });
   }
   res.sendFile(path.join(distPath, 'index.html'), (err) => {
@@ -209,8 +249,9 @@ app.use((err, req, res, _next) => {
   });
 });
 
-// Only listen directly when running as a standalone node server (not on Vercel Serverless)
-if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+// Only listen directly when running as a standalone node server (not on Vercel Serverless or imported as module)
+const isDirectExecution = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(__filename);
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test' && isDirectExecution) {
   app.listen(PORT, () => {
     console.log(`🚀 [CONTROL CENTER API] Running on http://localhost:${PORT}`);
     console.log(`🔐 Admin auth active. Endpoint: /api/admin/login`);

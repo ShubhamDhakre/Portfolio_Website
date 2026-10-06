@@ -65,7 +65,10 @@ export async function loginAdmin(password) {
       } else if (res.status === 429) {
         errorMsg = 'Too many login attempts. Please wait 15 minutes before retrying.';
       } else if (res.status >= 500) {
-        errorMsg = `Server error (${res.status}). Please check Vercel function logs.`;
+        const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+        errorMsg = isLocal
+          ? `Server error (${res.status}). Local backend server on port 3001 is unreachable. Ensure the backend is running (e.g. npm run dev).`
+          : `Server error (${res.status}). Please check Vercel function logs.`;
       }
       throw new Error(errorMsg);
     }

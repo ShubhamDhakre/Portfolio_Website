@@ -3,6 +3,14 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { kvStore, isSharedKVConfigured } from './kvStore.js';
 
+let initialSiteSettingsData = null;
+try {
+  const initialSettingsUrl = new URL('../data/site-settings.json', import.meta.url);
+  initialSiteSettingsData = JSON.parse(fs.readFileSync(initialSettingsUrl, 'utf8'));
+} catch {
+  initialSiteSettingsData = null;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -471,13 +479,14 @@ export function getSiteSettings() {
     }
 
     if (!raw) {
+      const fallbackDoc = normalizeSettingsDoc(initialSiteSettingsData || DEFAULT_SETTINGS);
       if (!IS_SERVERLESS) {
         try {
-          writeSettingsToDisk(DEFAULT_SETTINGS);
+          writeSettingsToDisk(fallbackDoc);
         } catch {}
       }
-      inMemorySettingsCache = DEFAULT_SETTINGS;
-      return DEFAULT_SETTINGS;
+      inMemorySettingsCache = fallbackDoc;
+      return fallbackDoc;
     }
 
     const parsed = JSON.parse(raw);
@@ -494,7 +503,7 @@ export function getSiteSettings() {
         console.error('Failed to read backup file as well:', backupErr);
       }
     }
-    return DEFAULT_SETTINGS;
+    return normalizeSettingsDoc(initialSiteSettingsData || DEFAULT_SETTINGS);
   }
 }
 

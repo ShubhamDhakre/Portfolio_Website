@@ -92,7 +92,16 @@ router.post('/login', loginRateLimiter, async (req, res) => {
       return res.status(401).json({ error: 'Invalid password. Please try again.', message: 'Invalid password. Please try again.' });
     }
 
-    const sessionToken = createSession();
+    let sessionToken;
+    try {
+      sessionToken = createSession();
+    } catch (sessionErr) {
+      console.error('[AUTH CONFIG ERROR]', sessionErr.message);
+      return res.status(503).json({
+        error: 'Service Unavailable',
+        message: 'Administrator session subsystem is not configured in production.'
+      });
+    }
     const isProduction = process.env.NODE_ENV === 'production';
     const cookieOptions = {
       httpOnly: true,
@@ -194,6 +203,14 @@ router.get('/session', async (req, res) => {
       authenticated: Boolean(isValid)
     });
   } catch (err) {
+    if (err.message && err.message.includes('SESSION_SECRET')) {
+      return res.status(503).json({
+        authenticated: false,
+        error: 'Service Unavailable',
+        code: 'AUTH_CONFIG_ERROR',
+        message: 'Session verification service is not configured in production.'
+      });
+    }
     if (err.code === 'KV_UNAVAILABLE' || err.status === 503) {
       return res.status(503).json({
         authenticated: false,
