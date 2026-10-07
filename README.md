@@ -107,8 +107,9 @@ npm run build
 I'm always interested in learning, building projects, and connecting with people who share an interest in technology and development.
 
 * **GitHub:** [ShubhamDhakre](https://github.com/ShubhamDhakre)
-* **Portfolio:** Visit the live portfolio through my GitHub profile.
-* **Contact:** Use the contact options available on the portfolio website.
+* **Portfolio:** https://shubhamdhakre-portfolio.vercel.app
+* **Contact:** 7620180322
+* **Email:** ssdhakre93@gmail.com
 
 ## 🌠 A Final Note
 
