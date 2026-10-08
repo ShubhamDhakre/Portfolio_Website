@@ -187,6 +187,88 @@ try {
   assert.fail(`oxlint AST scope check failed: ${err.stdout?.toString() || err.message}`);
 }
 
+// 8. Technology Cards Night Mode Text Readability & Contrast Audit
+const skillsCssPath = path.join(rootDir, 'src/components/Skills/Skills.css');
+assert.ok(fs.existsSync(skillsCssPath), 'Skills.css must exist');
+const skillsCss = fs.readFileSync(skillsCssPath, 'utf8');
+
+// 8.1 Card titles in Night Mode
+assert.match(
+  skillsCss,
+  /\[data-theme="night"\]\s+\.skill-card-name\s*\{\s*color:\s*#F8FAFC;/i,
+  'Card titles (.skill-card-name) in Night Mode must use #F8FAFC'
+);
+
+// 8.2 Card descriptions in Night Mode
+assert.match(
+  skillsCss,
+  /\[data-theme="night"\]\s+\.skill-card-summary\s*\{\s*color:\s*#CBD5E1;/i,
+  'Card descriptions (.skill-card-summary) in Night Mode must use #CBD5E1'
+);
+
+// 8.3 Technology tags in Night Mode
+assert.match(
+  skillsCss,
+  /\[data-theme="night"\]\s+\.card-topic-pill\s*\{\s*color:\s*#E2E8F0;/i,
+  'Technology tags (.card-topic-pill) in Night Mode must use #E2E8F0'
+);
+
+// 8.4 Accent text / tagline in Night Mode
+assert.match(
+  skillsCss,
+  /\[data-theme="night"\]\s+\.skill-card-tagline\s*\{\s*color:\s*#C4B5FD;/i,
+  'Card tagline (.skill-card-tagline) in Night Mode must use #C4B5FD'
+);
+
+// 8.5 Connected technology metadata in Night Mode
+assert.match(
+  skillsCss,
+  /\[data-theme="night"\]\s+\.relations-hint-label\s*\{\s*color:\s*#C4B5FD;/i,
+  'Relations hint label (.relations-hint-label) in Night Mode must use #C4B5FD'
+);
+assert.match(
+  skillsCss,
+  /\[data-theme="night"\]\s+\.relations-hint-names\s*\{\s*color:\s*#E2E8F0;/i,
+  'Relations hint names (.relations-hint-names) in Night Mode must use #E2E8F0'
+);
+
+// 8.6 Category badges in Night Mode
+assert.match(
+  skillsCss,
+  /\[data-theme="night"\]\s+\.category-frontend\s*\{\s*color:\s*#C4B5FD;/i,
+  'Frontend category badge in Night Mode must use #C4B5FD'
+);
+assert.match(
+  skillsCss,
+  /\[data-theme="night"\]\s+\.category-backend\s*\{\s*color:\s*#DDD6FE;/i,
+  'Backend category badge in Night Mode must use #DDD6FE'
+);
+assert.match(
+  skillsCss,
+  /\[data-theme="night"\]\s+\.category-tools\s*\{\s*color:\s*#CBD5E1;/i,
+  'Tools category badge in Night Mode must use #CBD5E1'
+);
+
+// 8.7 Verify Light Mode preservation (no [data-theme="day"] overrides for skill-card text)
+assert.strictEqual(
+  skillsCss.includes('[data-theme="day"] .skill-card-name'),
+  false,
+  'Light Mode must not override .skill-card-name (preserves default light mode tokens)'
+);
+assert.strictEqual(
+  skillsCss.includes('[data-theme="day"] .skill-card-summary'),
+  false,
+  'Light Mode must not override .skill-card-summary (preserves default light mode tokens)'
+);
+
+// 8.8 Verify design structure preservation (glassmorphism, layout, border-radius)
+assert.match(skillsCss, /\.skill-card\s*\{[^}]*backdrop-filter:\s*blur/i, 'Skill card must preserve backdrop-filter');
+assert.match(skillsCss, /\.skill-card\s*\{[^}]*border-radius:\s*var\(--radius-md\)/i, 'Skill card must preserve border-radius');
+assert.match(skillsCss, /\.skills-cards-grid\s*\{[^}]*display:\s*grid/i, 'Skills cards grid must preserve grid layout');
+
+console.log('  ✓ Technology Cards Night Mode Text Readability & Contrast: All contrast tokens verified');
+console.log('  ✓ Light Mode & Layout Preservation: 0 day-theme regressions, all glassmorphic tokens intact');
+
 console.log('\n=======================================================');
 console.log('✅ ALL CUSTOM CURSOR & FRONTEND AUDIT TESTS PASSED!');
 console.log('=======================================================\n');

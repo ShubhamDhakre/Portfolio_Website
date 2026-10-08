@@ -257,6 +257,10 @@
   color: var(--text-primary);
 }
 
+[data-theme="night"] .inspection-title {
+  color: #F8FAFC;
+}
+
 .inspection-badge {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -285,7 +289,7 @@
 }
 
 [data-theme="night"] .inspection-tagline {
-  color: var(--accent-soft);
+  color: #C4B5FD;
 }
 
 .inspection-summary {
@@ -298,6 +302,10 @@
   color: var(--text-secondary);
   margin-bottom: 16px;
   max-width: 900px;
+}
+
+[data-theme="night"] .inspection-summary {
+  color: #CBD5E1;
 }
 
 /* Topics Group */
@@ -317,6 +325,10 @@
   margin-bottom: 6px;
 }
 
+[data-theme="night"] .topics-label {
+  color: #94A3B8;
+}
+
 .inspection-topics-list {
   display: flex;
   flex-wrap: wrap;
@@ -331,6 +343,12 @@
   border: 1px solid var(--glass-level-1-border);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
+}
+
+[data-theme="night"] .inspection-topic-chip {
+  color: #E2E8F0;
+  background: rgba(255, 255, 255, 0.045);
+  border-color: rgba(196, 181, 253, 0.18);
 }
 
 /* Architectural Connections Group */
@@ -352,7 +370,7 @@
 }
 
 [data-theme="night"] .connections-label {
-  color: var(--accent-soft);
+  color: #C4B5FD;
 }
 
 .inspection-connections-list {
@@ -378,8 +396,8 @@
 }
 
 [data-theme="night"] .connection-link-chip {
-  color: var(--accent-soft);
-  border-color: rgba(139, 123, 184, 0.35);
+  color: #C4B5FD;
+  border-color: rgba(196, 181, 253, 0.28);
 }
 
 .connection-link-chip:hover {
@@ -388,6 +406,10 @@
   border-color: var(--accent-soft);
   transform: translateY(-1px);
   box-shadow: 0 4px 12px var(--accent-glow);
+}
+
+[data-theme="night"] .conn-name {
+  color: #E2E8F0;
 }
 
 .conn-arrow {
@@ -408,6 +430,10 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--text-muted);
+}
+
+[data-theme="night"] .overview-label {
+  color: #94A3B8;
 }
 
 .overview-divider {
@@ -506,7 +532,8 @@
 }
 
 [data-theme="night"] .card-active-status-dot {
-  background: var(--accent-soft);
+  background: #C4B5FD;
+  box-shadow: 0 0 10px rgba(196, 181, 253, 0.6);
 }
 
 .skill-card-name {
@@ -522,8 +549,17 @@
   color: var(--accent-primary);
 }
 
+[data-theme="night"] .skill-card-name {
+  color: #F8FAFC;
+}
+
+[data-theme="night"] .skill-card:hover .skill-card-name {
+  color: #FFFFFF;
+}
+
 [data-theme="night"] .skill-card.is-active-card .skill-card-name {
-  color: var(--accent-soft);
+  color: #F8FAFC;
+  text-shadow: 0 0 14px rgba(196, 181, 253, 0.4);
 }
 
 /* Category Badges with subtle semantic tints */
@@ -566,8 +602,38 @@
   color: #d97706;
 }
 
+[data-theme="night"] .skill-card-badge {
+  font-weight: 600;
+}
+
+[data-theme="night"] .category-frontend {
+  color: #C4B5FD;
+  background: rgba(196, 181, 253, 0.12);
+  border: 1px solid rgba(196, 181, 253, 0.28);
+}
+
+[data-theme="night"] .category-backend {
+  color: #DDD6FE;
+  background: rgba(167, 139, 250, 0.12);
+  border: 1px solid rgba(167, 139, 250, 0.28);
+}
+
+[data-theme="night"] .category-database {
+  color: #C4B5FD;
+  background: rgba(196, 181, 253, 0.12);
+  border: 1px solid rgba(196, 181, 253, 0.28);
+}
+
+[data-theme="night"] .category-tools {
+  color: #CBD5E1;
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+}
+
 [data-theme="night"] .category-exploring {
-  color: #f59e0b;
+  color: #FCD34D;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.28);
 }
 
 .skill-card-tagline {
@@ -579,7 +645,7 @@
 }
 
 [data-theme="night"] .skill-card-tagline {
-  color: var(--accent-soft);
+  color: #C4B5FD;
 }
 
 .skill-card-summary {
@@ -589,6 +655,10 @@
   color: var(--text-secondary);
   margin-bottom: 14px;
   line-height: 1.6;
+}
+
+[data-theme="night"] .skill-card-summary {
+  color: #CBD5E1;
 }
 
 .skill-card-tags {
@@ -609,6 +679,17 @@
   color: var(--text-secondary);
 }
 
+[data-theme="night"] .card-topic-pill {
+  color: #E2E8F0;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(196, 181, 253, 0.16);
+}
+
+[data-theme="night"] .skill-card:hover .card-topic-pill {
+  border-color: rgba(196, 181, 253, 0.28);
+  background: rgba(255, 255, 255, 0.065);
+}
+
 /* Active card relations footer bar */
 .card-active-relations-bar {
   margin-top: 14px;
@@ -621,13 +702,17 @@
   font-size: 10px;
 }
 
+[data-theme="night"] .card-active-relations-bar {
+  border-top-color: rgba(196, 181, 253, 0.2);
+}
+
 .relations-hint-label {
   color: var(--accent-primary);
   font-weight: 700;
 }
 
 [data-theme="night"] .relations-hint-label {
-  color: var(--accent-soft);
+  color: #C4B5FD;
 }
 
 .relations-hint-names {
@@ -635,6 +720,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+[data-theme="night"] .relations-hint-names {
+  color: #E2E8F0;
 }
 
 /* Responsive Breakpoints */

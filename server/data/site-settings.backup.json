@@ -1,9 +1,9 @@
 {
-  "version": 27,
-  "updatedAt": "2026-10-06T06:10:29.366Z",
+  "version": 28,
+  "updatedAt": "2026-10-06T16:58:35.258Z",
   "updatedBy": "admin",
   "global": {
-    "theme": "minimal",
+    "theme": "default",
     "customThemeName": "",
     "background": "digital-web",
     "customBackgroundName": "",
@@ -62,7 +62,7 @@
     }
   },
   "settings": {
-    "theme": "minimal",
+    "theme": "default",
     "customThemeName": "",
     "background": "digital-web",
     "customBackgroundName": "",
