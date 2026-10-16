@@ -43,8 +43,8 @@
   padding: 3px 9px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-level-1-border);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 .branch-dot {
@@ -73,14 +73,14 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--transition-fast);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 .footer-top-btn:hover {
   color: var(--accent-highlight);
-  border-color: var(--accent-highlight);
-  background: var(--glass-level-2-bg);
+  border-color: var(--glass-border-hover);
+  background: var(--glass-bg-hover);
   transform: translateY(-2px);
   box-shadow: 0 4px 14px var(--accent-glow);
 }

@@ -30,14 +30,14 @@
 .skill-network-container {
   position: relative;
   z-index: 10;
-  background: var(--glass-level-1-bg);
-  border: 1px solid var(--glass-level-1-border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(115%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(115%);
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-card-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-lg);
   padding: 24px;
   margin-bottom: 44px;
-  box-shadow: 0 10px 30px rgba(45, 36, 70, 0.05);
+  box-shadow: var(--glass-card-shadow);
   overflow: visible;
   display: flex;
   flex-direction: column;
@@ -130,8 +130,8 @@
   padding: 3px 9px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-level-1-border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(115%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(115%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   white-space: nowrap;
   transition: all var(--transition-fast);
   box-shadow: 0 2px 8px rgba(45, 36, 70, 0.08);
@@ -186,11 +186,11 @@
   position: relative;
   background: var(--glass-level-2-bg);
   border: 1px solid var(--glass-level-2-border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(120%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(120%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-md);
   padding: 22px 26px;
-  box-shadow: 0 12px 32px rgba(45, 36, 70, 0.07);
+  box-shadow: var(--glass-card-elevated-shadow);
   overflow: hidden;
   animation: panelSlideIn 0.22s ease-out;
 }
@@ -451,10 +451,10 @@
 /* Liquid Violet Glass Skill Card */
 .skill-card {
   position: relative;
-  background: var(--glass-level-1-bg);
-  border: 1px solid var(--glass-level-1-border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(115%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(115%);
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-card-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-md);
   padding: 22px;
   transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), 
@@ -465,7 +465,7 @@
   overflow: hidden;
   cursor: pointer;
   outline: none;
-  box-shadow: 0 10px 30px rgba(45, 36, 70, 0.05);
+  box-shadow: var(--glass-card-shadow);
 }
 
 .skill-card::before {
@@ -486,9 +486,9 @@
 /* Card Hover State */
 .skill-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(109, 91, 166, 0.34);
-  background: var(--glass-level-2-bg);
-  box-shadow: 0 16px 38px rgba(45, 36, 70, 0.09), inset 0 1px 1px rgba(255, 255, 255, 0.95);
+  border-color: var(--glass-border-hover);
+  background: var(--glass-bg-hover);
+  box-shadow: var(--glass-shadow-hover);
 }
 
 .skill-card:hover::before {
@@ -497,9 +497,9 @@
 
 /* Active Selected Card State (Controlled only by explicit click) */
 .skill-card.is-active-card {
-  border-color: rgba(109, 91, 166, 0.36);
-  background: var(--glass-level-2-bg);
-  box-shadow: 0 14px 36px rgba(109, 91, 166, 0.14), inset 0 1px 1px rgba(255, 255, 255, 0.95);
+  border-color: var(--glass-card-active-border);
+  background: var(--glass-card-active-bg);
+  box-shadow: var(--glass-card-active-shadow);
   transform: translateY(-2px);
 }
 

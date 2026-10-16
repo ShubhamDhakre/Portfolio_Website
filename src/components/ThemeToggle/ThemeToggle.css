@@ -11,8 +11,8 @@
   border-radius: var(--radius-full);
   background: var(--glass-level-1-bg);
   border: 1px solid var(--glass-level-1-border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   color: var(--text-primary);
   font-size: 13px;
   font-weight: 500;

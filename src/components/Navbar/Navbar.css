@@ -31,8 +31,8 @@
   max-width: 980px;
   padding: 8px 20px;
   border-radius: var(--radius-full);
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: var(--glass-nav-bg);
+  border: 1px solid var(--glass-nav-border);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   box-shadow: var(--glass-shadow);
@@ -52,7 +52,7 @@
   border-top-left-radius: var(--radius-full);
   border-top-right-radius: var(--radius-full);
   pointer-events: none;
-  opacity: 0.6;
+  opacity: 0.45;
 }
 
 .navbar-header.is-scrolled .navbar-container {

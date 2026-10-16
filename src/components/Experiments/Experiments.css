@@ -39,8 +39,8 @@
 
 .exp-card {
   position: relative;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-card-border);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-md);
@@ -73,9 +73,9 @@
 }
 
 .exp-card.is-selected {
-  border-color: var(--accent-highlight);
-  background: rgba(109, 91, 166, 0.16);
-  box-shadow: 0 4px 20px var(--accent-glow), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+  border-color: var(--glass-card-active-border);
+  background: var(--glass-card-active-bg);
+  box-shadow: var(--glass-card-active-shadow);
 }
 
 .exp-card-top {
@@ -142,13 +142,13 @@
 
 .stage-glass-panel {
   position: relative;
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-card-border);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-lg);
   padding: 28px;
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--glass-card-shadow);
   display: flex;
   flex-direction: column;
   min-height: 480px;
@@ -229,14 +229,16 @@
   width: 100%;
   max-width: 340px;
   padding: 36px 24px;
-  background: var(--glass-bg-hover);
-  border: 1px solid var(--glass-border-hover);
+  background: var(--glass-card-elevated-bg);
+  border: 1px solid var(--glass-card-elevated-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-md);
   text-align: center;
   cursor: crosshair;
   transition: transform 0.1s ease-out;
   transform-style: preserve-3d;
-  box-shadow: var(--glass-shadow);
+  box-shadow: var(--glass-card-elevated-shadow);
   position: relative;
 }
 
@@ -396,21 +398,24 @@
 }
 
 .spotlight-demo-area {
-  background: rgba(0, 0, 0, 0.32);
-  border: 1px solid var(--glass-border);
+  background: var(--glass-card-elevated-bg);
+  border: 1px solid var(--glass-card-elevated-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-md);
   padding: 30px 20px;
   text-align: center;
   position: relative;
   overflow: hidden;
+  box-shadow: var(--glass-card-elevated-shadow);
 }
 
 .spotlight-reticle {
   display: inline-block;
   padding: 12px 20px;
   border-radius: var(--radius-md);
-  background: rgba(109, 91, 166, 0.12);
-  border: 1px solid rgba(139, 123, 184, 0.35);
+  background: var(--glass-card-active-bg);
+  border: 1px solid var(--glass-card-active-border);
 }
 
 .reticle-label {
@@ -442,11 +447,14 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  background: rgba(0, 0, 0, 0.24);
-  border: 1px solid var(--glass-border);
+  background: var(--glass-card-elevated-bg);
+  border: 1px solid var(--glass-card-elevated-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-md);
   padding: 16px;
   margin-bottom: 14px;
+  box-shadow: var(--glass-card-elevated-shadow);
 }
 
 .matrix-row {
@@ -499,11 +507,14 @@
 }
 
 .graph-stat-card {
-  background: rgba(0, 0, 0, 0.24);
-  border: 1px solid var(--glass-border);
+  background: var(--glass-card-elevated-bg);
+  border: 1px solid var(--glass-card-elevated-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-md);
   padding: 16px;
   text-align: center;
+  box-shadow: var(--glass-card-elevated-shadow);
 }
 
 .stat-num {
@@ -532,10 +543,13 @@
 }
 
 .metric-box {
-  background: rgba(0, 0, 0, 0.24);
-  border: 1px solid var(--glass-border);
+  background: var(--glass-card-elevated-bg);
+  border: 1px solid var(--glass-card-elevated-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-md);
   padding: 14px;
+  box-shadow: var(--glass-card-elevated-shadow);
 }
 
 .metric-label {
@@ -564,7 +578,8 @@
   font-size: 11px;
   padding: 2px 8px;
   border-radius: var(--radius-full);
-  background: rgba(109, 91, 166, 0.18);
+  background: var(--glass-card-active-bg);
+  border: 1px solid var(--glass-card-active-border);
   color: var(--accent-highlight);
 }
 

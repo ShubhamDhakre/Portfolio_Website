@@ -98,35 +98,6 @@ export const projects = [
       ],
       currentStatus: "Used personally to organize course notes and web development concepts."
     }
-  },
-  {
-    id: "api-endpoint-sandbox",
-    number: "04",
-    featured: false,
-    title: "RESTful API Explorer",
-    tagline: "Minimalist HTTP Request Tester & Mock Server",
-    shortDescription: "A learning exercise building a mini Postman-like interface to send GET/POST requests, inspect JSON responses, and understand HTTP headers.",
-    status: "Exploring",
-    statusType: "concept",
-    technologies: [
-      "Node.js",
-      "Express.js",
-      "JavaScript",
-      "CSS3"
-    ],
-    github: "https://github.com/shubhamdhakre",
-    demo: null,
-    details: {
-      problem: "Learning how backend APIs communicate with frontend clients is best understood by building an inspection tool from scratch.",
-      idea: "Create an Express backend paired with a straightforward frontend to dispatch asynchronous fetch requests, parse headers, and format JSON payloads.",
-      technologiesBreakdown: "Node.js and Express server with custom middleware for logging; simple frontend UI for drafting payloads and observing status codes.",
-      features: [
-        { name: "Request Method Switcher", state: "Implemented", note: "Switch between GET, POST, PUT, DELETE with body inputs." },
-        { name: "Status Code Explainer", state: "Implemented", note: "Educational tooltips detailing 200, 201, 400, 404, and 500 behaviors." },
-        { name: "JSON Response Beautifier", state: "Implemented", note: "Syntax-highlighted preview of returned backend data." }
-      ],
-      currentStatus: "Active exploration sandbox for mastering Express middleware and HTTP semantics."
-    }
   }
 ];
 

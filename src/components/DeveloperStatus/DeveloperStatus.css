@@ -14,13 +14,13 @@
   width: 340px;
   max-width: calc(100vw - 48px);
   z-index: 90;
-  background: var(--glass-level-1-bg);
-  border: 1px solid var(--glass-level-1-border);
-  backdrop-filter: blur(var(--glass-blur)) saturate(115%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(115%);
+  background: var(--glass-nav-bg);
+  border: 1px solid var(--glass-nav-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-md);
   padding: 18px 20px 16px;
-  box-shadow: 0 14px 38px rgba(45, 36, 70, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: var(--glass-shadow);
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -50,8 +50,9 @@
 /* Isolated local hover state */
 .developer-status-fixed:hover {
   transform: translateY(-3px);
-  border-color: rgba(109, 91, 166, 0.32);
-  box-shadow: 0 18px 45px rgba(45, 36, 70, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  border-color: var(--glass-border-hover);
+  background: var(--glass-bg-hover);
+  box-shadow: var(--glass-shadow-hover);
 }
 
 .developer-status-fixed:hover::before {
@@ -290,12 +291,13 @@
   align-items: center;
   gap: 10px;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(45, 36, 70, 0.08);
+  box-shadow: var(--glass-shadow);
 }
 
 .developer-status-fixed.is-mini:hover {
   transform: translateY(-2px);
-  border-color: rgba(109, 91, 166, 0.35);
+  border-color: var(--glass-border-hover);
+  background: var(--glass-bg-hover);
 }
 
 .mini-time {

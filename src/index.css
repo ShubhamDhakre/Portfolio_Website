@@ -45,13 +45,13 @@
   --accent-highlight: #A898D9;
   --accent-glow: rgba(128, 110, 192, 0.28);
 
-  /* 3-TIER LIQUID GLASS MATERIAL SYSTEM (Dark) */
-  /* Level 1: Transparent Glass (Navbar, Main Containers) */
+  /* 3-TIER LIQUID GLASS MATERIAL SYSTEM (Dark Workspace) */
+  /* Level 1: Standard Glass (Cards, Main Containers, Window Panels) */
   --glass-level-1-bg: rgba(255, 255, 255, 0.035);
   --glass-level-1-border: rgba(255, 255, 255, 0.08);
   --glass-level-1-shadow: 0 18px 45px -10px rgba(0, 0, 0, 0.65), inset 0 1px 1px rgba(255, 255, 255, 0.05);
 
-  /* Level 2: Violet-Tinted Glass (Inspection Panels, Architecture Detail, Info Blocks) */
+  /* Level 2: Elevated / Inspection Glass (Detail Panels, Inspection, Inner Sub-cards) */
   --glass-level-2-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.04) 0%, rgba(109, 91, 166, 0.08) 100%);
   --glass-level-2-border: rgba(109, 91, 166, 0.22);
   --glass-level-2-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.7), inset 0 1px 1px rgba(255, 255, 255, 0.08);
@@ -61,17 +61,37 @@
   --glass-level-3-border: rgba(139, 123, 184, 0.42);
   --glass-level-3-shadow: 0 20px 50px -10px rgba(109, 91, 166, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.18);
 
-  /* Global glass aliases for compatibility */
-  --glass-bg: var(--glass-level-1-bg);
-  --glass-bg-hover: rgba(255, 255, 255, 0.065);
-  --glass-bg-active: var(--glass-level-3-bg);
-  
-  --glass-border: var(--glass-level-1-border);
-  --glass-border-hover: rgba(139, 123, 184, 0.32);
-  --glass-border-active: var(--glass-level-3-border);
+  /* Floating Chrome (Navbar, Fixed Status HUDs) */
+  --glass-nav-bg: rgba(8, 11, 22, 0.68);
+  --glass-nav-border: rgba(255, 255, 255, 0.09);
 
-  --glass-blur: 20px;
-  --glass-saturate: 160%;
+  /* Semantic Glass Tokens across all components */
+  --glass-card-bg: var(--glass-level-1-bg);
+  --glass-card-border: var(--glass-level-1-border);
+  --glass-card-shadow: var(--glass-level-1-shadow);
+
+  --glass-card-elevated-bg: var(--glass-level-2-bg);
+  --glass-card-elevated-border: var(--glass-level-2-border);
+  --glass-card-elevated-shadow: var(--glass-level-2-shadow);
+
+  --glass-card-active-bg: var(--glass-level-3-bg);
+  --glass-card-active-border: var(--glass-level-3-border);
+  --glass-card-active-shadow: var(--glass-level-3-shadow);
+
+  --glass-card-hover-bg: rgba(255, 255, 255, 0.065);
+  --glass-card-hover-border: rgba(139, 123, 184, 0.32);
+
+  /* Global glass aliases for compatibility */
+  --glass-bg: var(--glass-card-bg);
+  --glass-bg-hover: var(--glass-card-hover-bg);
+  --glass-bg-active: var(--glass-card-active-bg);
+  
+  --glass-border: var(--glass-card-border);
+  --glass-border-hover: var(--glass-card-hover-border);
+  --glass-border-active: var(--glass-card-active-border);
+
+  --glass-blur: 16px;
+  --glass-saturate: 140%;
   --glass-shadow: var(--glass-level-1-shadow);
   --glass-shadow-hover: 0 24px 55px -10px rgba(0, 0, 0, 0.75), inset 0 1px 1px rgba(139, 123, 184, 0.2);
 
@@ -90,7 +110,7 @@
 }
 
 /* ==========================================================================
-   LIGHT WORKSPACE THEME (Day) - REFINED LAVENDER/VIOLET GLASS
+   LIGHT WORKSPACE THEME (Day) - REFINED TRANSLUCENT LAVENDER/VIOLET GLASS
    ========================================================================== */
 [data-theme="day"] {
   --bg-primary: #F3F2F7;
@@ -107,37 +127,57 @@
   --accent-highlight: #594494;
   --accent-glow: rgba(89, 68, 148, 0.16);
 
-  /* 3-TIER LIQUID VIOLET GLASS MATERIAL SYSTEM (Light) */
-  /* Level 1: Transparent Glass */
-  --glass-level-1-bg: rgba(255, 255, 255, 0.55);
-  --glass-level-1-border: rgba(109, 91, 166, 0.12);
-  --glass-level-1-shadow: 0 14px 36px -8px rgba(45, 36, 70, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.85);
+  /* 3-TIER LIQUID VIOLET GLASS MATERIAL SYSTEM (Light / Day Mode) */
+  /* Level 1: Standard Glass (Translucent Neutral-Lavender - Cards, Window Panels, Containers) */
+  --glass-level-1-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.38) 0%, rgba(240, 236, 250, 0.28) 100%);
+  --glass-level-1-border: rgba(109, 91, 166, 0.14);
+  --glass-level-1-shadow: 0 12px 32px -8px rgba(45, 36, 70, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.55);
 
-  /* Level 2: Soft Violet-Tinted Glass */
-  --glass-level-2-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.72) 0%, rgba(238, 234, 248, 0.65) 100%);
-  --glass-level-2-border: rgba(109, 91, 166, 0.18);
-  --glass-level-2-shadow: 0 16px 40px -10px rgba(45, 36, 70, 0.09), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  /* Level 2: Elevated / Inspection Glass (Detail Panels, Inspection, Inner Sub-cards) */
+  --glass-level-2-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.46) 0%, rgba(236, 230, 248, 0.36) 100%);
+  --glass-level-2-border: rgba(109, 91, 166, 0.20);
+  --glass-level-2-shadow: 0 14px 36px -8px rgba(45, 36, 70, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.65);
 
-  /* Level 3: Active Violet Glass */
-  --glass-level-3-bg: linear-gradient(135deg, rgba(235, 230, 248, 0.85) 0%, rgba(225, 218, 245, 0.8) 100%);
-  --glass-level-3-border: rgba(109, 91, 166, 0.32);
-  --glass-level-3-shadow: 0 18px 45px -10px rgba(109, 91, 166, 0.18), inset 0 1px 1px rgba(255, 255, 255, 0.95);
+  /* Level 3: Active Glass (Selected Nodes, Active Cards, Key Highlights) */
+  --glass-level-3-bg: linear-gradient(135deg, rgba(226, 218, 248, 0.52) 0%, rgba(214, 204, 242, 0.42) 100%);
+  --glass-level-3-border: rgba(109, 91, 166, 0.34);
+  --glass-level-3-shadow: 0 16px 40px -8px rgba(109, 91, 166, 0.16), inset 0 1px 1px rgba(255, 255, 255, 0.75);
+
+  /* Floating Chrome (Navbar, Fixed Status HUDs) */
+  --glass-nav-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.48) 0%, rgba(244, 240, 252, 0.38) 100%);
+  --glass-nav-border: rgba(109, 91, 166, 0.16);
+
+  /* Semantic Glass Tokens (Light) */
+  --glass-card-bg: var(--glass-level-1-bg);
+  --glass-card-border: var(--glass-level-1-border);
+  --glass-card-shadow: var(--glass-level-1-shadow);
+
+  --glass-card-elevated-bg: var(--glass-level-2-bg);
+  --glass-card-elevated-border: var(--glass-level-2-border);
+  --glass-card-elevated-shadow: var(--glass-level-2-shadow);
+
+  --glass-card-active-bg: var(--glass-level-3-bg);
+  --glass-card-active-border: var(--glass-level-3-border);
+  --glass-card-active-shadow: var(--glass-level-3-shadow);
+
+  --glass-card-hover-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.50) 0%, rgba(242, 238, 252, 0.38) 100%);
+  --glass-card-hover-border: rgba(109, 91, 166, 0.28);
 
   /* Global glass aliases (Light) */
-  --glass-bg: var(--glass-level-1-bg);
-  --glass-bg-hover: rgba(255, 255, 255, 0.82);
-  --glass-bg-active: var(--glass-level-3-bg);
+  --glass-bg: var(--glass-card-bg);
+  --glass-bg-hover: var(--glass-card-hover-bg);
+  --glass-bg-active: var(--glass-card-active-bg);
 
-  --glass-border: var(--glass-level-1-border);
-  --glass-border-hover: rgba(109, 91, 166, 0.26);
-  --glass-border-active: var(--glass-level-3-border);
+  --glass-border: var(--glass-card-border);
+  --glass-border-hover: var(--glass-card-hover-border);
+  --glass-border-active: var(--glass-card-active-border);
 
-  --glass-blur: 20px;
-  --glass-saturate: 150%;
+  --glass-blur: 16px;
+  --glass-saturate: 140%;
   --glass-shadow: var(--glass-level-1-shadow);
   --glass-shadow-hover: 0 18px 42px -10px rgba(45, 36, 70, 0.12), inset 0 1px 1px rgba(109, 91, 166, 0.18);
 
-  --glass-specular: linear-gradient(135deg, rgba(255, 255, 255, 0.65) 0%, rgba(255, 255, 255, 0) 60%);
+  --glass-specular: linear-gradient(135deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0) 60%);
   --mouse-glow: rgba(109, 91, 166, 0.05);
 
   --code-bg: rgba(246, 244, 252, 0.96);

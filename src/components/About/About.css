@@ -37,8 +37,8 @@
   padding: 3px 9px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-level-1-border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 .section-title {
@@ -63,8 +63,8 @@
   padding: 4px 12px;
   border-radius: var(--radius-full);
   border: 1px solid var(--glass-level-1-border);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 /* About Grid */
@@ -79,13 +79,13 @@
 /* Liquid Glass Main & Sub Cards */
 .about-card {
   position: relative;
-  background: var(--glass-level-1-bg);
-  border: 1px solid var(--glass-level-1-border);
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-card-border);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-lg);
   padding: 36px;
-  box-shadow: var(--glass-level-1-shadow);
+  box-shadow: var(--glass-card-shadow);
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
               border-color 0.3s ease, 
               box-shadow 0.3s ease;
@@ -109,8 +109,9 @@
 
 .about-card:hover {
   transform: translateY(-4px);
-  border-color: rgba(109, 91, 166, 0.32);
-  box-shadow: 0 20px 48px -10px rgba(45, 36, 70, 0.1), inset 0 1px 1px rgba(255, 255, 255, 0.95);
+  border-color: var(--glass-border-hover);
+  background: var(--glass-bg-hover);
+  box-shadow: var(--glass-shadow-hover);
 }
 
 .about-card:hover::before {
@@ -196,8 +197,8 @@
   color: var(--text-secondary);
   cursor: pointer;
   transition: all var(--transition-fast);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 .floating-tag:hover {
@@ -219,6 +220,8 @@
   position: relative;
   background: var(--glass-level-2-bg);
   border: 1px solid var(--glass-level-2-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-md);
   padding: 18px 22px;
   margin-top: 6px;
@@ -327,13 +330,13 @@
 /* Architecture Pipeline Section */
 .about-architecture-section {
   position: relative;
-  background: var(--glass-level-1-bg);
-  border: 1px solid var(--glass-level-1-border);
+  background: var(--glass-card-bg);
+  border: 1px solid var(--glass-card-border);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-lg);
   padding: 32px;
-  box-shadow: var(--glass-level-1-shadow);
+  box-shadow: var(--glass-card-shadow);
   overflow: hidden;
 }
 
@@ -407,8 +410,8 @@
   cursor: pointer;
   transition: all var(--transition-fast);
   text-align: left;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
 }
 
 .arch-node-chip:hover {
@@ -457,6 +460,8 @@
   z-index: 1;
   background: var(--glass-level-2-bg);
   border: 1px solid var(--glass-level-2-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   border-radius: var(--radius-md);
   padding: 22px;
   box-shadow: var(--glass-level-2-shadow);
